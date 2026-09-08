@@ -1,0 +1,303 @@
+<%inc
+#include "blackkeys/assetsbo/handling/brand/routes/common.hpp"
+%>
+<%c++
+  const auto &brand_name = @@.get<std::string>("heading");
+  const auto uploads_enabled = @@.get<bool>("image_uploads_enabled");
+  const auto encoded_brand_name =
+      blackkeys::assetsbo::handling::brand::EncodePathSegment(brand_name);
+  const std::vector<std::pair<std::string, std::string>> images = {
+      {"logo", "Logo"}, {"picture", "Picture"}};
+%>
+<section data-brand-images class="grid gap-4 sm:grid-cols-2 mb-6">
+<%c++ for (const auto &[kind_value, label_value] : images) {
+  const auto kind = drogon::HttpViewData::htmlTranslate(kind_value);
+  const auto label = drogon::HttpViewData::htmlTranslate(label_value);
+  const auto filename = drogon::HttpViewData::htmlTranslate(kind_value + ".png");
+  const auto image_url = drogon::HttpViewData::htmlTranslate(
+      "/v1/brand/" + encoded_brand_name + "/image/" + kind_value);
+  const auto input_id = drogon::HttpViewData::htmlTranslate(kind_value + "_file");
+%>
+  <article class="card card-border bg-base-100 shadow-sm" data-brand-image="{%kind%}" data-image-url="{%image_url%}" data-stored-filename="{%filename%}">
+    <figure class="bg-base-200 min-h-48 p-4">
+      <img data-image-preview hidden alt="{%label%} preview" class="max-h-64 max-w-full object-contain">
+      <p data-image-placeholder class="text-sm text-base-content/60">Loading preview…</p>
+    </figure>
+    <div class="card-body gap-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="card-title">{%label%}</h2>
+        <span data-image-status class="badge badge-sm badge-ghost">Loading</span>
+      </div>
+      <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+        <dt class="font-medium">Filename</dt>
+        <dd data-image-filename class="min-w-0 break-all">{%filename%}</dd>
+        <dt class="font-medium">Format</dt>
+        <dd><span data-image-format class="badge badge-outline badge-sm">—</span></dd>
+        <dt class="font-medium">Size</dt>
+        <dd data-image-size>—</dd>
+        <dt class="font-medium">Dimensions</dt>
+        <dd data-image-dimensions>—</dd>
+        <dt class="font-medium">Aspect ratio</dt>
+        <dd data-image-aspect>—</dd>
+        <dt class="font-medium">Last modified</dt>
+        <dd data-image-modified>Unknown</dd>
+      </dl>
+<%c++ if (uploads_enabled) { %>
+      <fieldset class="fieldset">
+        <label class="fieldset-legend" for="{%input_id%}">Replace {%label%}</label>
+        <input id="{%input_id%}" type="file" name="{%input_id%}" accept="image/png,.png" class="file-input w-full" disabled>
+        <p data-image-error hidden role="alert" class="text-sm text-error"></p>
+      </fieldset>
+<%c++ } %>
+    </div>
+  </article>
+<%c++ } %>
+</section>
+<script>
+  (function () {
+    "use strict";
+
+    var root = document.currentScript.previousElementSibling;
+    var maximumBytes = 10 * 1024 * 1024;
+    var pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+    var cards = Array.from(root.querySelectorAll("[data-brand-image]"));
+
+    function field(card, name) {
+      return card.querySelector("[data-image-" + name + "]");
+    }
+
+    function setStatus(card, text, classes) {
+      var element = field(card, "status");
+      element.textContent = text;
+      element.className = "badge badge-sm " + classes;
+    }
+
+    function setError(card, message) {
+      var element = field(card, "error");
+      if (!element) return;
+      element.textContent = message;
+      element.hidden = !message;
+    }
+
+    function revokePreview(card) {
+      var state = card.brandImageState;
+      if (state.currentUrl) {
+        URL.revokeObjectURL(state.currentUrl);
+        state.currentUrl = "";
+      }
+    }
+
+    function hidePreview(card, message) {
+      revokePreview(card);
+      var preview = field(card, "preview");
+      preview.removeAttribute("src");
+      preview.hidden = true;
+      var placeholder = field(card, "placeholder");
+      placeholder.textContent = message;
+      placeholder.hidden = false;
+    }
+
+    function showPreview(card, url) {
+      revokePreview(card);
+      card.brandImageState.currentUrl = url;
+      var preview = field(card, "preview");
+      preview.src = url;
+      preview.hidden = false;
+      field(card, "placeholder").hidden = true;
+    }
+
+    function greatestCommonDivisor(a, b) {
+      while (b) {
+        var remainder = a % b;
+        a = b;
+        b = remainder;
+      }
+      return a;
+    }
+
+    function humanSize(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      var units = ["KiB", "MiB", "GiB"];
+      var value = bytes;
+      var unit = "B";
+      for (var i = 0; i < units.length && value >= 1024; ++i) {
+        value /= 1024;
+        unit = units[i];
+      }
+      return value.toLocaleString(undefined, {maximumFractionDigits: 1}) + " " + unit;
+    }
+
+    function localTime(value) {
+      if (!value) return "Unknown";
+      var date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "Unknown" : date.toLocaleString();
+    }
+
+    function renderMetadata(card, metadata) {
+      field(card, "filename").textContent = metadata.filename;
+      field(card, "format").textContent = "PNG · " + (metadata.type || "image/png");
+      field(card, "size").textContent = humanSize(metadata.size) + " (" +
+          metadata.size.toLocaleString() + " bytes)";
+      field(card, "dimensions").textContent = metadata.width.toLocaleString() + " × " +
+          metadata.height.toLocaleString() + " px";
+      var divisor = greatestCommonDivisor(metadata.width, metadata.height);
+      field(card, "aspect").textContent = (metadata.width / divisor) + ":" +
+          (metadata.height / divisor);
+      field(card, "modified").textContent = metadata.modified;
+    }
+
+    function resetMetadata(card) {
+      field(card, "filename").textContent = card.dataset.storedFilename;
+      field(card, "format").textContent = "—";
+      field(card, "size").textContent = "—";
+      field(card, "dimensions").textContent = "—";
+      field(card, "aspect").textContent = "—";
+      field(card, "modified").textContent = "Unknown";
+    }
+
+    function decodeImage(url) {
+      return new Promise(function (resolve, reject) {
+        var image = new Image();
+        image.onload = function () {
+          resolve({width: image.naturalWidth, height: image.naturalHeight});
+        };
+        image.onerror = reject;
+        image.src = url;
+      });
+    }
+
+    function renderStored(card) {
+      var stored = card.brandImageState.stored;
+      setError(card, "");
+      if (stored.availability === "ready") {
+        var url = URL.createObjectURL(stored.blob);
+        showPreview(card, url);
+        renderMetadata(card, stored.metadata);
+        setStatus(card, "Stored", "badge-outline");
+      } else if (stored.availability === "missing") {
+        hidePreview(card, "Not uploaded");
+        resetMetadata(card);
+        setStatus(card, "Not uploaded", "badge-ghost");
+      } else {
+        hidePreview(card, "Unable to load");
+        resetMetadata(card);
+        setStatus(card, "Unable to load", "badge-error badge-soft");
+      }
+    }
+
+    async function loadStored(card) {
+      var state = card.brandImageState;
+      try {
+        var response = await fetch(card.dataset.imageUrl, {cache: "no-store"});
+        if (response.status === 404) {
+          state.stored = {availability: "missing"};
+          renderStored(card);
+          return;
+        }
+        if (!response.ok) {
+          state.stored = {availability: "error"};
+          renderStored(card);
+          return;
+        }
+
+        var blob = await response.blob();
+        var url = URL.createObjectURL(blob);
+        try {
+          var dimensions = await decodeImage(url);
+          state.stored = {
+            availability: "ready",
+            blob: blob,
+            metadata: {
+              filename: card.dataset.storedFilename,
+              type: blob.type || "image/png",
+              size: blob.size,
+              width: dimensions.width,
+              height: dimensions.height,
+              modified: localTime(response.headers.get("Last-Modified"))
+            }
+          };
+          showPreview(card, url);
+          renderMetadata(card, state.stored.metadata);
+          setStatus(card, "Stored", "badge-outline");
+        } catch (error) {
+          URL.revokeObjectURL(url);
+          state.stored = {availability: "error"};
+          renderStored(card);
+        }
+      } catch (error) {
+        state.stored = {availability: "error"};
+        renderStored(card);
+      }
+    }
+
+    async function hasPngSignature(file) {
+      if (file.size < pngSignature.length) return false;
+      var bytes = new Uint8Array(await file.slice(0, pngSignature.length).arrayBuffer());
+      return pngSignature.every(function (value, index) { return bytes[index] === value; });
+    }
+
+    function rejectSelection(card, input, message) {
+      input.value = "";
+      renderStored(card);
+      setError(card, message);
+    }
+
+    function bindUpload(card) {
+      var input = card.querySelector("input[type=file]");
+      if (!input) return;
+      input.disabled = false;
+      input.addEventListener("change", async function () {
+        var state = card.brandImageState;
+        var token = ++state.selectionToken;
+        var file = input.files && input.files[0];
+        if (!file) {
+          renderStored(card);
+          return;
+        }
+        if (file.size > maximumBytes) {
+          rejectSelection(card, input, "Choose a PNG no larger than 10 MiB.");
+          return;
+        }
+        if (!(await hasPngSignature(file))) {
+          if (token !== state.selectionToken) return;
+          rejectSelection(card, input, "The selected file does not have a valid PNG signature.");
+          return;
+        }
+
+        var url = URL.createObjectURL(file);
+        try {
+          var dimensions = await decodeImage(url);
+          if (token !== state.selectionToken) {
+            URL.revokeObjectURL(url);
+            return;
+          }
+          showPreview(card, url);
+          renderMetadata(card, {
+            filename: file.name,
+            type: "image/png",
+            size: file.size,
+            width: dimensions.width,
+            height: dimensions.height,
+            modified: "Not yet stored"
+          });
+          setStatus(card, "Unsaved replacement", "badge-warning badge-soft");
+          setError(card, "");
+        } catch (error) {
+          URL.revokeObjectURL(url);
+          if (token === state.selectionToken) {
+            rejectSelection(card, input, "The selected PNG could not be decoded.");
+          }
+        }
+      });
+    }
+
+    cards.forEach(function (card) {
+      card.brandImageState = {currentUrl: "", selectionToken: 0, stored: {availability: "error"}};
+      loadStored(card).then(function () { bindUpload(card); });
+    });
+
+    window.addEventListener("pagehide", function () {
+      cards.forEach(revokePreview);
+    }, {once: true});
+  })();
+</script>

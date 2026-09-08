@@ -1,0 +1,199 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: blackkeys
+    folder: Blackkeys
+    interval: 1m
+    rules:
+      - uid: blackkeys-ram-high
+        title: RAM used % high
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: blackkeys-prometheus
+            model:
+              editorMode: code
+              expr: avg(100 * (1 - (node_memory_MemAvailable_bytes{job=~"blackkeys.*"} / node_memory_MemTotal_bytes{job=~"blackkeys.*"})))
+              instant: true
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: B
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [90]
+              refId: C
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: Blackkeys RAM usage is above 90% (avg across jobs) for 5 minutes.
+        labels:
+          severity: warning
+        notification_settings:
+          receiver: grafana-default-email
+
+      - uid: blackkeys-cpu-high
+        title: CPU used % high
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: blackkeys-prometheus
+            model:
+              editorMode: code
+              expr: avg(100 - (avg by (instance) (rate(node_cpu_seconds_total{job=~"blackkeys.*", mode="idle"}[5m])) * 100))
+              instant: true
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: B
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [90]
+              refId: C
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: Blackkeys CPU usage is above 90% (avg across jobs) for 5 minutes.
+        labels:
+          severity: warning
+        notification_settings:
+          receiver: grafana-default-email
+
+      - uid: blackkeys-disk-io-high
+        title: Disk IO high
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: blackkeys-prometheus
+            model:
+              editorMode: code
+              expr: sum(rate(node_disk_read_bytes_total{job=~"blackkeys.*", device!~"nbd.*"}[5m])) + sum(rate(node_disk_written_bytes_total{job=~"blackkeys.*", device!~"nbd.*"}[5m]))
+              instant: true
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: B
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [20000000]
+              refId: C
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: Blackkeys total disk IO (read+write, all jobs) is above 20 MB/s for 5 minutes. Threshold is a placeholder — no known real capacity limit has been set.
+        labels:
+          severity: warning
+        notification_settings:
+          receiver: grafana-default-email
+
+      - uid: blackkeys-net-io-high
+        title: Net IO high
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: blackkeys-prometheus
+            model:
+              editorMode: code
+              expr: sum(rate(node_network_receive_bytes_total{job=~"blackkeys.*", device="eth0"}[5m])) + sum(rate(node_network_transmit_bytes_total{job=~"blackkeys.*", device="eth0"}[5m]))
+              instant: true
+              range: false
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: reduce
+              expression: A
+              reducer: last
+              refId: B
+          - refId: C
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__expr__"
+            model:
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [20000000]
+              refId: C
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: Blackkeys total network IO (rx+tx, all jobs) is above 20 MB/s for 5 minutes. Threshold is a placeholder — no known real capacity limit has been set.
+        labels:
+          severity: warning
+        notification_settings:
+          receiver: grafana-default-email

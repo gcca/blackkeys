@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en" data-theme="{{default_theme}}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>{{app_name}} | {{title}}</title>
+    <script>
+      try {
+        const savedTheme = localStorage.getItem('blackkeys-dwa-theme');
+        if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+      } catch (error) {}
+    </script>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0" integrity="sha384-BvJpBiO8Kh31EqtJe5DRIeWrHWnCGkwytKs9NKFi86Hhw96dEqdEMzZDeK9iEGTc" crossorigin="anonymous"></script>
+  </head>
+  <body class="min-h-svh overflow-x-hidden bg-base-100 text-base-content antialiased">
+    {{#show_theme_picker}}
+    <div
+      class="fixed z-20"
+      style="right: max(1rem, env(safe-area-inset-right)); top: max(1rem, env(safe-area-inset-top))"
+    >
+      <label class="flex min-h-11 items-center gap-1 rounded-full border border-base-300 bg-base-100/90 py-1 pl-3 pr-1 shadow-sm backdrop-blur">
+        <span aria-hidden="true">🎨</span>
+        <span class="sr-only">Theme</span>
+        <select id="theme-select" class="select select-ghost select-sm w-32 rounded-full focus:outline-none" aria-label="Theme">
+          {{#themes}}
+          <option value="{{name}}">{{label}}</option>
+          {{/themes}}
+        </select>
+      </label>
+    </div>
+    {{/show_theme_picker}}
+    {{#show_nav}}
+    <div
+      class="fixed inset-x-0 top-0 z-10 flex justify-center px-4 pt-3"
+      style="padding-top: max(0.75rem, env(safe-area-inset-top))"
+    >
+      <div class="glass flex min-h-11 items-center gap-2 rounded-full px-4 py-2 shadow-sm">
+        <span aria-hidden="true">✨</span>
+        <span class="text-xs font-semibold">Plaza San Miguel</span>
+        <span class="flex-1"></span>
+        <a href="/" class="text-xs font-medium text-base-content/60">🏠 Home</a>
+      </div>
+    </div>
+    {{/show_nav}}
+    <main class="min-h-svh {{#show_nav}}pt-20 pb-28{{/show_nav}}">
+      {{{content}}}
+    </main>
+    {{#show_nav}}
+    <div
+      class="fixed inset-x-0 bottom-0 z-10 flex items-center justify-between px-4 pb-3"
+      style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))"
+    >
+      <div class="glass flex items-center gap-1 rounded-full p-1.5">
+        {{#nav_primary_items}}
+        <a
+          href="{{href}}"
+          class="flex flex-col items-center rounded-full px-4 py-2 {{#active}}bg-primary/15 text-primary{{/active}}{{^active}}text-base-content/60{{/active}}"
+        >
+          <span aria-hidden="true">{{icon}}</span>
+          <span class="text-[10px] font-semibold">{{label}}</span>
+        </a>
+        {{/nav_primary_items}}
+      </div>
+      {{#nav_search_item}}
+      <a
+        href="{{href}}"
+        class="glass flex flex-col items-center rounded-full px-4 py-2 {{#active}}text-primary{{/active}}{{^active}}text-base-content/60{{/active}}"
+      >
+        <span aria-hidden="true">{{icon}}</span>
+        <span class="text-[10px] font-semibold">{{label}}</span>
+      </a>
+      {{/nav_search_item}}
+    </div>
+    {{/show_nav}}
+    {{#show_theme_picker}}
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const picker = document.getElementById('theme-select');
+        if (!picker) return;
+
+        const storageKey = 'blackkeys-dwa-theme';
+        const fallbackTheme = 'dim';
+        const supportedThemes = Array.from(picker.options, function (option) {
+          return option.value;
+        });
+
+        function SetTheme(theme, persist) {
+          const nextTheme = supportedThemes.includes(theme) ? theme : fallbackTheme;
+          document.documentElement.dataset.theme = nextTheme;
+          picker.value = nextTheme;
+          if (persist) {
+            try {
+              localStorage.setItem(storageKey, nextTheme);
+            } catch (error) {}
+          }
+        }
+
+        let savedTheme = fallbackTheme;
+        try {
+          savedTheme = localStorage.getItem(storageKey) || fallbackTheme;
+        } catch (error) {}
+        SetTheme(savedTheme, false);
+        picker.addEventListener('change', function () {
+          SetTheme(picker.value, true);
+        });
+      });
+    </script>
+    {{/show_theme_picker}}
+  </body>
+</html>

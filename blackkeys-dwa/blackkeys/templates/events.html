@@ -1,0 +1,37 @@
+<div class="mx-auto max-w-3xl px-4">
+  <h1 class="mb-4 text-xl font-bold">Featured</h1>
+  <div class="carousel carousel-start mb-8 gap-4 pb-2">
+    {{#featured_events}}
+    <div class="carousel-item">
+      <div class="relative h-[150px] w-[200px] overflow-hidden rounded-2xl bg-gradient-to-br {{tint_from_class}} {{tint_to_class}} p-4">
+        <span aria-hidden="true" class="absolute right-2 top-2 text-4xl text-white/35">{{icon}}</span>
+        <div class="absolute bottom-4 left-4 right-4 flex flex-col gap-1">
+          <div class="flex size-10 flex-col items-center justify-center rounded-xl bg-white">
+            <span class="{{tint_text_class}} text-sm font-bold">{{day}}</span>
+            <span class="text-[9px] font-semibold text-base-content/70">{{month}}</span>
+          </div>
+          <p class="mt-2 text-[10px] font-bold uppercase text-white/85">{{category}}</p>
+          <p class="text-base font-semibold text-white">{{title}}</p>
+        </div>
+      </div>
+    </div>
+    {{/featured_events}}
+  </div>
+
+  <h2 class="mb-4 text-xl font-bold">Upcoming</h2>
+  <div class="flex flex-col gap-3">
+    {{#upcoming_events}}
+    <div class="flex items-center gap-3 rounded-2xl bg-base-200 p-3">
+      <div class="{{tint_solid_class}} flex size-12 flex-col items-center justify-center rounded-xl text-white">
+        <span class="text-sm font-bold">{{day}}</span>
+        <span class="text-[9px] font-semibold">{{month}}</span>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-sm font-semibold">{{title}}</p>
+        <p class="truncate text-xs text-base-content/60">{{time}} · {{location}}</p>
+      </div>
+      <span aria-hidden="true" class="text-base-content/40">›</span>
+    </div>
+    {{/upcoming_events}}
+  </div>
+</div>

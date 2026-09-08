@@ -1,0 +1,78 @@
+<%inc
+#include "blackkeys/assetsbo/handling/brand/routes/common.hpp"
+%>
+<%layout layout%>
+<%c++
+  const auto editable = @@.get<bool>("editable");
+%>
+<%c++ if (editable) {
+  const auto &name = @@.get<std::string>("heading");
+  const auto encoded_name =
+      blackkeys::assetsbo::handling::brand::EncodePathSegment(name);
+  const auto href = drogon::HttpViewData::htmlTranslate(
+      "/v1/brand/" + encoded_name + "/update");
+  const auto delete_href = drogon::HttpViewData::htmlTranslate(
+      "/v1/brand/" + encoded_name + "/delete");
+  const auto display_name = drogon::HttpViewData::htmlTranslate(name);
+%>
+<p>
+  <a href="{%href%}" class="btn btn-primary btn-sm">Edit</a>
+  <button type="button" class="btn btn-error btn-sm" onclick="delete_brand_modal.showModal()">Remove</button>
+</p>
+<dialog id="delete_brand_modal" class="modal">
+  <div class="modal-box">
+    <h3 class="text-lg font-bold">Remove brand</h3>
+    <p class="py-4">Are you sure you want to remove "{%display_name%}"? This cannot be undone.</p>
+    <div class="modal-action">
+      <form method="dialog">
+        <button class="btn">Cancel</button>
+      </form>
+      <form method="post" action="{%delete_href%}">
+        <button type="submit" class="btn btn-error">Remove</button>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+<%c++ } else { %>
+<div class="alert alert-warning">Editing is disabled while brands share this name.</div>
+<%c++ } %>
+<%c++
+  const auto &columns = @@.get<std::vector<std::string>>("columns");
+  const auto &nested = @@.get<std::vector<bool>>("nested_columns");
+  const auto &matches = @@.get<std::vector<std::vector<std::string>>>("matches");
+  const auto &overridden = @@.get<std::vector<std::vector<bool>>>("overridden");
+%>
+<%c++ if (matches.size() > 1) { %>
+<div class="alert alert-warning mb-4">{%std::to_string(matches.size())%} brands share this name.</div>
+<%c++ } %>
+<%view brand_images %>
+<%c++ for (std::size_t m = 0; m < matches.size(); ++m) {
+  const auto &row = matches[m];
+  const auto &marks = overridden[m];
+%>
+<%c++ if (matches.size() > 1) { %>
+<h2>Match {%std::to_string(m + 1)%} of {%std::to_string(matches.size())%}</h2>
+<%c++ } %>
+<div class="overflow-x-auto mb-6">
+<table class="table table-zebra">
+  <thead>
+    <tr><th>Column</th><th>Value</th></tr>
+  </thead>
+  <tbody>
+<%c++ for (std::size_t c = 0; c < columns.size() && c < row.size(); ++c) {
+  const auto column = drogon::HttpViewData::htmlTranslate(columns[c]);
+  const bool is_nested = c < nested.size() && nested[c];
+  const auto value = is_nested
+      ? blackkeys::assetsbo::handling::brand::RenderNestedCellHtml(row[c])
+      : drogon::HttpViewData::htmlTranslate(row[c]);
+%>
+    <tr>
+      <td>{%column%}</td>
+      <td class="details">{%value%}<%c++ if (c < marks.size() && marks[c]) { %> <span class="badge badge-warning badge-sm">edited</span><%c++ } %></td>
+    </tr>
+<%c++ } %>
+  </tbody>
+</table>
+</div>
+<%c++ } %>

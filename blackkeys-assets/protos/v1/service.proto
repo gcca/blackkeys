@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package blackkeys.assets.v1;
+
+option go_package = "github.com/plaza-san-miguel/blackkeys/blackkeys-assets/gen/assetsv1;assetsv1";
+
+import "v1/messages.proto";
+
+service Brands {
+  rpc List(ListRequest) returns (ListResponse);
+  rpc Logo(ImageRequest) returns (ImageResponse);
+  rpc Picture(ImageRequest) returns (ImageResponse);
+}

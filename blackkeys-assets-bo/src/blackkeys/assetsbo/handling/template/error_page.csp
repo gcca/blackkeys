@@ -1,0 +1,5 @@
+<%layout layout%>
+<%c++
+  const auto message = drogon::HttpViewData::htmlTranslate(@@.get<std::string>("message"));
+%>
+<div class="alert alert-error">{%message%}</div>

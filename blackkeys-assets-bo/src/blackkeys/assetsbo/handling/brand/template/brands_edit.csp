@@ -1,0 +1,35 @@
+<%inc
+#include "blackkeys/assetsbo/handling/brand/routes/common.hpp"
+%>
+<%layout layout%>
+<%c++
+  const auto &columns = @@.get<std::vector<std::string>>("columns");
+  const auto &nested = @@.get<std::vector<bool>>("nested_columns");
+  const auto &row = @@.get<std::vector<std::string>>("row");
+  const auto &name = @@.get<std::string>("heading");
+  const auto encoded_name =
+      blackkeys::assetsbo::handling::brand::EncodePathSegment(name);
+  const auto action = drogon::HttpViewData::htmlTranslate(
+      "/v1/brand/" + encoded_name + "/update");
+  const auto back = drogon::HttpViewData::htmlTranslate(
+      "/v1/brand/" + encoded_name + "/details");
+%>
+<form method="post" action="{%action%}" enctype="multipart/form-data" class="flex flex-col gap-4">
+  <%view brand_images %>
+<%c++ for (std::size_t c = 0; c < columns.size() && c < row.size(); ++c) {
+  const auto column = drogon::HttpViewData::htmlTranslate(columns[c]);
+  const auto value = drogon::HttpViewData::htmlTranslate(row[c]);
+  const bool is_nested = c < nested.size() && nested[c];
+%>
+  <fieldset class="fieldset">
+    <label class="fieldset-legend">{%column%}</label>
+<%c++ if (is_nested) { %>
+    <textarea name="{%column%}" rows="8" cols="60" class="textarea textarea-bordered w-full">{%value%}</textarea>
+<%c++ } else { %>
+    <input type="text" name="{%column%}" value="{%value%}" class="input input-bordered w-full">
+<%c++ } %>
+  </fieldset>
+<%c++ } %>
+  <p><button type="submit" class="btn btn-primary">Save</button></p>
+</form>
+<p><a href="{%back%}" class="btn btn-ghost">Cancel</a></p>

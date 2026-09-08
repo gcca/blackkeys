@@ -1,0 +1,7 @@
+/.bin
+/bin
+/gen
+/.ninja_log
+blackkeys-assets
+stores.csv
+/target

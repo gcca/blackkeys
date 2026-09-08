@@ -1,0 +1,7 @@
+[package]
+name = "blackkeys-remove_user"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+turso = { version = "=0.7.2", default-features = false, features = ["sync"] }

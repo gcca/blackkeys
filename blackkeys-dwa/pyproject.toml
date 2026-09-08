@@ -1,0 +1,17 @@
+[project]
+name = "blackkeys-dwa"
+version = "0.0.1"
+description = "Server-rendered HTML demo for Blackkeys"
+authors = [
+    {name = "gcca", email = "git@gcca.dev"},
+]
+dependencies = [
+    "sanic>=25.12.1",
+    "pystache>=0.6.8",
+    "httpx2>=2.12.0",
+]
+requires-python = "==3.13.*"
+readme = "README.md"
+
+[tool.pdm]
+distribution = false

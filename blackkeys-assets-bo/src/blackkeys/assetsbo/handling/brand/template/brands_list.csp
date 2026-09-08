@@ -1,0 +1,32 @@
+<%inc
+#include "blackkeys/assetsbo/handling/brand/routes/common.hpp"
+%>
+<%layout layout%>
+<%c++
+  const auto &names = @@.get<std::vector<std::string>>("names");
+%>
+<p><a href="/v1/brand/create" class="btn btn-primary">Create brand</a></p>
+<%c++ if (names.empty()) { %>
+<div class="alert">No brands.</div>
+<%c++ } else { %>
+<div class="overflow-x-auto">
+<table class="table table-zebra">
+  <thead>
+    <tr><th>Name</th></tr>
+  </thead>
+  <tbody>
+<%c++ for (const auto &name : names) {
+  const auto label = drogon::HttpViewData::htmlTranslate(name);
+  const auto href = drogon::HttpViewData::htmlTranslate(
+      "/v1/brand/" +
+      blackkeys::assetsbo::handling::brand::EncodePathSegment(name) +
+      "/details");
+%>
+    <tr>
+      <td><a href="{%href%}" class="link link-primary">{%label%}</a></td>
+    </tr>
+<%c++ } %>
+  </tbody>
+</table>
+</div>
+<%c++ } %>

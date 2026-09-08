@@ -1,0 +1,560 @@
+services:
+  # --- cache ------------------------------------------------------------------
+  memcached-ws-01:
+    image: memcached:1.6-alpine
+    profiles: [core, cache-ws]
+    command: ["-m", "256", "-I", "11m"]
+    environment:
+      TZ: UTC
+    ports:
+      - "11211:11211"
+    restart: unless-stopped
+
+  memcached-ws-02:
+    image: memcached:1.6-alpine
+    profiles: [core, cache-ws]
+    command: ["-m", "256", "-I", "11m"]
+    environment:
+      TZ: UTC
+    ports:
+      - "11212:11211"
+    restart: unless-stopped
+
+  memcached-ws-03:
+    image: memcached:1.6-alpine
+    profiles: [core, cache-ws]
+    command: ["-m", "256", "-I", "11m"]
+    environment:
+      TZ: UTC
+    ports:
+      - "11213:11211"
+    restart: unless-stopped
+
+  memcached-ws-04:
+    image: memcached:1.6-alpine
+    profiles: [core, cache-ws]
+    command: ["-m", "256", "-I", "11m"]
+    environment:
+      TZ: UTC
+    ports:
+      - "11214:11211"
+    restart: unless-stopped
+
+  memcached-ws-05:
+    image: memcached:1.6-alpine
+    profiles: [core, cache-ws]
+    command: ["-m", "256", "-I", "11m"]
+    environment:
+      TZ: UTC
+    ports:
+      - "11215:11211"
+    restart: unless-stopped
+
+  memcached-assets-01:
+    image: memcached:1.6-alpine
+    profiles: [core, cache-assets]
+    command: ["-m", "256", "-I", "10m"]
+    environment:
+      TZ: UTC
+    ports:
+      - "11221:11211"
+    restart: unless-stopped
+
+  memcached-assets-02:
+    image: memcached:1.6-alpine
+    profiles: [core, cache-assets]
+    command: ["-m", "256", "-I", "10m"]
+    environment:
+      TZ: UTC
+    ports:
+      - "11222:11211"
+    restart: unless-stopped
+
+  memcached-assets-03:
+    image: memcached:1.6-alpine
+    profiles: [core, cache-assets]
+    command: ["-m", "256", "-I", "10m"]
+    environment:
+      TZ: UTC
+    ports:
+      - "11223:11211"
+    restart: unless-stopped
+
+  # --- broker -----------------------------------------------------------------
+  rabbitmq1:
+    image: rabbitmq:4-management-alpine
+    profiles: [core]
+    hostname: rabbitmq1
+    environment:
+      TZ: UTC
+      RABBITMQ_ERLANG_COOKIE: blackkeys-ecosystem
+      RABBITMQ_DEFAULT_USER: blackkeys
+      RABBITMQ_DEFAULT_PASS: blackkeys
+    configs:
+      - source: rabbitmq.conf
+        target: /etc/rabbitmq/rabbitmq.conf
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "15692:15692"
+    volumes:
+      - rabbitmq1:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  rabbitmq2:
+    image: rabbitmq:4-management-alpine
+    profiles: [core]
+    hostname: rabbitmq2
+    environment:
+      TZ: UTC
+      RABBITMQ_ERLANG_COOKIE: blackkeys-ecosystem
+      RABBITMQ_DEFAULT_USER: blackkeys
+      RABBITMQ_DEFAULT_PASS: blackkeys
+    configs:
+      - source: rabbitmq.conf
+        target: /etc/rabbitmq/rabbitmq.conf
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+      - "15693:15692"
+    volumes:
+      - rabbitmq2:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  rabbitmq3:
+    image: rabbitmq:4-management-alpine
+    profiles: [core]
+    hostname: rabbitmq3
+    environment:
+      TZ: UTC
+      RABBITMQ_ERLANG_COOKIE: blackkeys-ecosystem
+      RABBITMQ_DEFAULT_USER: blackkeys
+      RABBITMQ_DEFAULT_PASS: blackkeys
+    configs:
+      - source: rabbitmq.conf
+        target: /etc/rabbitmq/rabbitmq.conf
+    ports:
+      - "5674:5672"
+      - "15674:15672"
+      - "15694:15692"
+    volumes:
+      - rabbitmq3:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  # --- storage ------------------------------------------------------------------
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    profiles: [core]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      TZ: UTC
+      MINIO_ROOT_USER: blackkeys
+      MINIO_ROOT_PASSWORD: blackkeys
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio:/data
+    restart: unless-stopped
+
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    profiles: [core]
+    environment:
+      TZ: UTC
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+        until mc alias set local http://minio:9000 blackkeys blackkeys; do sleep 1; done &&
+        mc mb --ignore-existing local/blackkeys-assets
+      "
+    restart: "no"
+
+  # --- exporters --------------------------------------------------------------
+  memcached-exporter-ws-01:
+    image: prom/memcached-exporter:v0.17.0
+    profiles: [observability]
+    command: ["--memcached.address=memcached-ws-01:11211"]
+    environment:
+      TZ: UTC
+    ports:
+      - "9150:9150"
+    depends_on:
+      - memcached-ws-01
+    restart: unless-stopped
+
+  memcached-exporter-ws-02:
+    image: prom/memcached-exporter:v0.17.0
+    profiles: [observability]
+    command: ["--memcached.address=memcached-ws-02:11211"]
+    environment:
+      TZ: UTC
+    ports:
+      - "9151:9150"
+    depends_on:
+      - memcached-ws-02
+    restart: unless-stopped
+
+  memcached-exporter-ws-03:
+    image: prom/memcached-exporter:v0.17.0
+    profiles: [observability]
+    command: ["--memcached.address=memcached-ws-03:11211"]
+    environment:
+      TZ: UTC
+    ports:
+      - "9152:9150"
+    depends_on:
+      - memcached-ws-03
+    restart: unless-stopped
+
+  memcached-exporter-ws-04:
+    image: prom/memcached-exporter:v0.17.0
+    profiles: [observability]
+    command: ["--memcached.address=memcached-ws-04:11211"]
+    environment:
+      TZ: UTC
+    ports:
+      - "9153:9150"
+    depends_on:
+      - memcached-ws-04
+    restart: unless-stopped
+
+  memcached-exporter-ws-05:
+    image: prom/memcached-exporter:v0.17.0
+    profiles: [observability]
+    command: ["--memcached.address=memcached-ws-05:11211"]
+    environment:
+      TZ: UTC
+    ports:
+      - "9154:9150"
+    depends_on:
+      - memcached-ws-05
+    restart: unless-stopped
+
+  memcached-exporter-assets-01:
+    image: prom/memcached-exporter:v0.17.0
+    profiles: [observability]
+    command: ["--memcached.address=memcached-assets-01:11211"]
+    environment:
+      TZ: UTC
+    ports:
+      - "9160:9150"
+    depends_on:
+      - memcached-assets-01
+    restart: unless-stopped
+
+  memcached-exporter-assets-02:
+    image: prom/memcached-exporter:v0.17.0
+    profiles: [observability]
+    command: ["--memcached.address=memcached-assets-02:11211"]
+    environment:
+      TZ: UTC
+    ports:
+      - "9161:9150"
+    depends_on:
+      - memcached-assets-02
+    restart: unless-stopped
+
+  memcached-exporter-assets-03:
+    image: prom/memcached-exporter:v0.17.0
+    profiles: [observability]
+    command: ["--memcached.address=memcached-assets-03:11211"]
+    environment:
+      TZ: UTC
+    ports:
+      - "9162:9150"
+    depends_on:
+      - memcached-assets-03
+    restart: unless-stopped
+
+  # --- observability ----------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [observability]
+    environment:
+      TZ: UTC
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    configs:
+      - source: prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus:/prometheus
+    depends_on:
+      - memcached-exporter-ws-01
+      - memcached-exporter-ws-02
+      - memcached-exporter-ws-03
+      - memcached-exporter-ws-04
+      - memcached-exporter-ws-05
+      - memcached-exporter-assets-01
+      - memcached-exporter-assets-02
+      - memcached-exporter-assets-03
+      - rabbitmq1
+      - rabbitmq2
+      - rabbitmq3
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.2.0
+    profiles: [observability]
+    environment:
+      TZ: UTC
+      GF_SECURITY_ADMIN_USER: blackkeys
+      GF_SECURITY_ADMIN_PASSWORD: blackkeys
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    configs:
+      - source: grafana-datasource.yaml
+        target: /etc/grafana/provisioning/datasources/prometheus.yaml
+      - source: grafana-dashboards.yaml
+        target: /etc/grafana/provisioning/dashboards/dashboards.yaml
+      - source: grafana-dashboard-ram.json
+        target: /etc/grafana/provisioning/dashboards/details/blackkeys-ram.json
+      - source: grafana-dashboard-cpu.json
+        target: /etc/grafana/provisioning/dashboards/details/blackkeys-cpu.json
+      - source: grafana-dashboard-disk.json
+        target: /etc/grafana/provisioning/dashboards/details/blackkeys-disk.json
+      - source: grafana-dashboard-net.json
+        target: /etc/grafana/provisioning/dashboards/details/blackkeys-net.json
+      - source: grafana-dashboard-overview.json
+        target: /etc/grafana/provisioning/dashboards/blackkeys/blackkeys-overview.json
+      - source: grafana-dashboard-memcached.json
+        target: /etc/grafana/provisioning/dashboards/memcached/blackkeys-memcached.json
+      - source: grafana-dashboard-assets-memcached.json
+        target: /etc/grafana/provisioning/dashboards/memcached/blackkeys-assets-memcached.json
+      - source: grafana-alert-rules.yaml
+        target: /etc/grafana/provisioning/alerting/rules.yaml
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana:/var/lib/grafana
+    restart: unless-stopped
+
+  # --- apps -------------------------------------------------------------------
+  blackkeys-assets:
+    build:
+      context: ../blackkeys-assets
+      dockerfile: Dockerfile
+    image: blackkeys-assets:local
+    profiles: [apps]
+    environment:
+      TZ: UTC
+      BUCKET_NAME: blackkeys-assets
+      GRPC_ADDRESS: 0.0.0.0
+      GRPC_PORT: 50051
+      CACHE_NODES: memcached-assets-01:11211,memcached-assets-02:11211,memcached-assets-03:11211
+      REPLICATION: 1
+    ports:
+      - "50051:50051"
+    depends_on:
+      - memcached-assets-01
+      - memcached-assets-02
+      - memcached-assets-03
+    restart: unless-stopped
+
+  blackkeys-ws:
+    build:
+      context: ../blackkeys-ws
+      dockerfile: Dockerfile
+    image: blackkeys-ws:local
+    profiles: [apps]
+    environment:
+      TZ: UTC
+      SECRET: blackkeys
+      CACHE_NODES: memcached-ws-01:11211,memcached-ws-02:11211,memcached-ws-03:11211,memcached-ws-04:11211,memcached-ws-05:11211
+      MQ_NODES: rabbitmq1:5672,rabbitmq2:5672,rabbitmq3:5672
+      MQ_USER: blackkeys
+      MQ_PASSWORD: blackkeys
+      ASSETS_GRPC_TARGET: blackkeys-assets:50051
+      TURSO_LOCAL_PATH: /data/blackkeys.db
+    ports:
+      - "8000:8000"
+    volumes:
+      - blackkeys-ws:/data
+    depends_on:
+      - memcached-ws-01
+      - memcached-ws-02
+      - memcached-ws-03
+      - memcached-ws-04
+      - memcached-ws-05
+      - rabbitmq1
+      - rabbitmq2
+      - rabbitmq3
+      - blackkeys-assets
+    restart: unless-stopped
+
+  blackkeys-hydrant:
+    build:
+      context: ../blackkeys-hydrant
+      dockerfile: Dockerfile
+      args:
+        C3_PLATFORM: linux/arm64
+    image: blackkeys-hydrant:local
+    platform: linux/arm64
+    profiles: [apps]
+    environment:
+      TZ: UTC
+      CACHE_NODES: memcached-ws-01:11211,memcached-ws-02:11211,memcached-ws-03:11211,memcached-ws-04:11211,memcached-ws-05:11211
+      MQ_NODES: rabbitmq1:5672,rabbitmq2:5672,rabbitmq3:5672
+      MQ_USER: blackkeys
+      MQ_PASSWORD: blackkeys
+    depends_on:
+      - memcached-ws-01
+      - memcached-ws-02
+      - memcached-ws-03
+      - memcached-ws-04
+      - memcached-ws-05
+      - rabbitmq1
+      - rabbitmq2
+      - rabbitmq3
+    restart: unless-stopped
+
+# --- configs ------------------------------------------------------------------
+configs:
+  rabbitmq.conf:
+    content: |
+      cluster_name = blackkeys
+      cluster_formation.peer_discovery_backend = classic_config
+      cluster_formation.classic_config.nodes.1 = rabbit@rabbitmq1
+      cluster_formation.classic_config.nodes.2 = rabbit@rabbitmq2
+      cluster_formation.classic_config.nodes.3 = rabbit@rabbitmq3
+      default_queue_type = quorum
+      loopback_users = none
+
+  prometheus.yml:
+    content: |
+      global:
+        scrape_interval: 25s
+
+      scrape_configs:
+        - job_name: memcached-ws
+          static_configs:
+            - targets: ["memcached-exporter-ws-01:9150"]
+              labels:
+                instance: memcached-ws-01
+            - targets: ["memcached-exporter-ws-02:9150"]
+              labels:
+                instance: memcached-ws-02
+            - targets: ["memcached-exporter-ws-03:9150"]
+              labels:
+                instance: memcached-ws-03
+            - targets: ["memcached-exporter-ws-04:9150"]
+              labels:
+                instance: memcached-ws-04
+            - targets: ["memcached-exporter-ws-05:9150"]
+              labels:
+                instance: memcached-ws-05
+
+        - job_name: memcached-assets
+          static_configs:
+            - targets: ["memcached-exporter-assets-01:9150"]
+              labels:
+                instance: memcached-assets-01
+            - targets: ["memcached-exporter-assets-02:9150"]
+              labels:
+                instance: memcached-assets-02
+            - targets: ["memcached-exporter-assets-03:9150"]
+              labels:
+                instance: memcached-assets-03
+
+        - job_name: rabbitmq
+          scrape_interval: 15s
+          static_configs:
+            - targets: ["rabbitmq1:15692"]
+              labels:
+                instance: rabbitmq1
+            - targets: ["rabbitmq2:15692"]
+              labels:
+                instance: rabbitmq2
+            - targets: ["rabbitmq3:15692"]
+              labels:
+                instance: rabbitmq3
+
+        - job_name: rabbitmq-queues
+          metrics_path: /metrics/detailed
+          params:
+            family:
+              - queue_coarse_metrics
+              - queue_metrics
+          static_configs:
+            - targets: ["rabbitmq1:15692"]
+              labels:
+                instance: rabbitmq1
+            - targets: ["rabbitmq2:15692"]
+              labels:
+                instance: rabbitmq2
+            - targets: ["rabbitmq3:15692"]
+              labels:
+                instance: rabbitmq3
+
+  grafana-datasource.yaml:
+    content: |
+      apiVersion: 1
+
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          uid: blackkeys-prometheus
+          access: proxy
+          url: http://prometheus:9090
+          isDefault: true
+          jsonData:
+            timeInterval: 25s
+
+  grafana-dashboards.yaml:
+    file: ./grafana/provisioning/dashboards/dashboards.yaml
+
+  grafana-dashboard-ram.json:
+    file: ./grafana/provisioning/dashboards/blackkeys-ram.json
+
+  grafana-dashboard-cpu.json:
+    file: ./grafana/provisioning/dashboards/blackkeys-cpu.json
+
+  grafana-dashboard-disk.json:
+    file: ./grafana/provisioning/dashboards/blackkeys-disk.json
+
+  grafana-dashboard-net.json:
+    file: ./grafana/provisioning/dashboards/blackkeys-net.json
+
+  grafana-dashboard-overview.json:
+    file: ./grafana/provisioning/dashboards/blackkeys-overview.json
+
+  grafana-dashboard-memcached.json:
+    file: ./grafana/provisioning/dashboards/blackkeys-memcached.json
+
+  grafana-dashboard-assets-memcached.json:
+    file: ./grafana/provisioning/dashboards/blackkeys-assets-memcached.json
+
+  grafana-alert-rules.yaml:
+    file: ./grafana/provisioning/alerting/rules.yaml
+
+# --- volumes ------------------------------------------------------------------
+volumes:
+  blackkeys-ws:
+  grafana:
+  minio:
+  prometheus:
+  rabbitmq1:
+  rabbitmq2:
+  rabbitmq3:

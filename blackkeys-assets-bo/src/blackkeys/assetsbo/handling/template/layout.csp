@@ -1,0 +1,85 @@
+<%c++
+  const auto title = drogon::HttpViewData::htmlTranslate(@@.get<std::string>("title"));
+  const auto heading = drogon::HttpViewData::htmlTranslate(@@.get<std::string>("heading"));
+  const auto meta = drogon::HttpViewData::htmlTranslate(@@.get<std::string>("meta"));
+  static const std::vector<std::string> kThemes = {
+      "light", "dark", "cupcake", "bumblebee", "emerald", "corporate", "synthwave", "retro",
+      "cyberpunk", "valentine", "halloween", "garden", "forest", "aqua", "lofi", "pastel",
+      "fantasy", "wireframe", "black", "luxury", "dracula", "cmyk", "autumn", "business", "acid",
+      "lemonade", "night", "coffee", "winter", "dim", "nord", "sunset", "caramellatte", "abyss",
+      "silk"};
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{%title%}</title>
+  <script>
+    (function () {
+      try {
+        document.documentElement.setAttribute(
+            "data-theme", localStorage.getItem("theme") || "light");
+      } catch (e) {}
+    })();
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body>
+  <div class="navbar bg-base-200 shadow-sm mb-6">
+    <div class="navbar-start">
+      <a href="/v1/brand/list" class="btn btn-ghost text-lg">Brands</a>
+    </div>
+    <div class="navbar-end">
+      <details class="dropdown dropdown-end">
+        <summary class="btn btn-ghost btn-circle" aria-label="Appearance" title="Appearance">
+          <span class="grid grid-cols-2 gap-0.5 w-5 h-5">
+            <span class="rounded-full bg-primary"></span>
+            <span class="rounded-full bg-secondary"></span>
+            <span class="rounded-full bg-accent"></span>
+            <span class="rounded-full bg-neutral"></span>
+          </span>
+        </summary>
+        <ul class="dropdown-content menu bg-base-200 rounded-box z-1 w-52 p-2 shadow-sm max-h-96 overflow-y-auto flex-nowrap">
+<%c++ for (const auto &theme : kThemes) { %>
+          <li>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" name="theme-dropdown" class="theme-controller radio radio-sm" value="{%theme%}">
+              <span data-theme="{%theme%}" class="grid grid-cols-2 gap-0.5 rounded-md border border-base-300 bg-base-100 p-1 w-4 h-4 shrink-0">
+                <span class="rounded-full bg-primary"></span>
+                <span class="rounded-full bg-secondary"></span>
+                <span class="rounded-full bg-accent"></span>
+                <span class="rounded-full bg-neutral"></span>
+              </span>
+              {%theme%}
+            </label>
+          </li>
+<%c++ } %>
+        </ul>
+      </details>
+    </div>
+  </div>
+  <div class="container mx-auto px-4 pb-8">
+    <h1 class="text-2xl font-bold">{%heading%}</h1>
+    <p class="text-sm opacity-60 break-all mb-4">{%meta%}</p>
+    [[]]
+  </div>
+  <script>
+    (function () {
+      try {
+        var current = localStorage.getItem("theme") || "light";
+        var radios = document.querySelectorAll(".theme-controller");
+        radios.forEach(function (radio) {
+          radio.checked = radio.value === current;
+          radio.addEventListener("change", function () {
+            localStorage.setItem("theme", radio.value);
+            document.documentElement.setAttribute("data-theme", radio.value);
+          });
+        });
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>

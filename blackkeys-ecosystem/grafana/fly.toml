@@ -1,0 +1,73 @@
+app = 'blackkeys-grafana'
+primary_region = 'ord'
+
+[build]
+  image = 'grafana/grafana:12.2.0'
+
+[env]
+  GF_AUTH_ANONYMOUS_ENABLED = 'true'
+  GF_SECURITY_ADMIN_USER = 'blackkeys'
+  GF_USERS_ALLOW_SIGN_UP = 'false'
+  TZ = 'UTC'
+
+[[mounts]]
+  source = 'grafana'
+  destination = '/var/lib/grafana'
+  initial_size = '1gb'
+
+[[files]]
+  guest_path = '/etc/grafana/provisioning/datasources/prometheus.yaml'
+  local_path = 'prometheus.yaml'
+
+[[files]]
+  guest_path = '/etc/grafana/provisioning/dashboards/dashboards.yaml'
+  local_path = 'provisioning/dashboards/dashboards.yaml'
+
+[[files]]
+  guest_path = '/etc/grafana/provisioning/dashboards/details/blackkeys-ram.json'
+  local_path = 'provisioning/dashboards/blackkeys-ram.json'
+
+[[files]]
+  guest_path = '/etc/grafana/provisioning/dashboards/details/blackkeys-cpu.json'
+  local_path = 'provisioning/dashboards/blackkeys-cpu.json'
+
+[[files]]
+  guest_path = '/etc/grafana/provisioning/dashboards/details/blackkeys-disk.json'
+  local_path = 'provisioning/dashboards/blackkeys-disk.json'
+
+[[files]]
+  guest_path = '/etc/grafana/provisioning/dashboards/details/blackkeys-net.json'
+  local_path = 'provisioning/dashboards/blackkeys-net.json'
+
+[[files]]
+  guest_path = '/etc/grafana/provisioning/dashboards/blackkeys/blackkeys-overview.json'
+  local_path = 'provisioning/dashboards/blackkeys-overview.json'
+
+[[files]]
+  guest_path = '/etc/grafana/provisioning/dashboards/memcached/blackkeys-memcached.json'
+  local_path = 'provisioning/dashboards/blackkeys-memcached.json'
+
+[[files]]
+  guest_path = '/etc/grafana/provisioning/dashboards/memcached/blackkeys-assets-memcached.json'
+  local_path = 'provisioning/dashboards/blackkeys-assets-memcached.json'
+
+[[files]]
+  guest_path = '/etc/grafana/provisioning/alerting/rules.yaml'
+  local_path = 'provisioning/alerting/rules.yaml'
+
+[checks]
+  [checks.health]
+    port = 3000
+    type = 'http'
+    method = 'GET'
+    path = '/api/health'
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '15s'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '768mb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 768

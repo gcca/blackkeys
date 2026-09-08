@@ -1,0 +1,776 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		001F6EF92426A3E9F6B77EBA /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7FBFCC6FD419F94A3FBAC2CE /* Foundation.framework */; };
+		ADFFFCA09EB8FA7B5E9AD178 /* PlazaActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 838B67E1072BBD5044DD8DB7 /* PlazaActivityAttributes.swift */; };
+		C3017723A9AADCE919B55706 /* blackkeysWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D58FC8C24EBC03D32B773D35 /* blackkeysWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0193E2B7AC8BB88176B1C054 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4E9DE0323060047F001B2F31 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DCA839E8D1711755A70E9ADF;
+			remoteInfo = blackkeysWidgetExtension;
+		};
+		4E9DE04830600480001B2F31 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4E9DE0323060047F001B2F31 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4E9DE0393060047F001B2F31;
+			remoteInfo = blackkeys;
+		};
+		4E9DE05230600480001B2F31 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4E9DE0323060047F001B2F31 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4E9DE0393060047F001B2F31;
+			remoteInfo = blackkeys;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		734E5062C9C732A16DEE05B5 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				C3017723A9AADCE919B55706 /* blackkeysWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		4E9DE03A3060047F001B2F31 /* blackkeys.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = blackkeys.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E9DE04730600480001B2F31 /* blackkeysTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = blackkeysTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E9DE05130600480001B2F31 /* blackkeysUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = blackkeysUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7FBFCC6FD419F94A3FBAC2CE /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		838B67E1072BBD5044DD8DB7 /* PlazaActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlazaActivityAttributes.swift; path = blackkeysWidget/PlazaActivityAttributes.swift; sourceTree = "<group>"; };
+		D58FC8C24EBC03D32B773D35 /* blackkeysWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = blackkeysWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4E9DE06230600480001B2F31 /* Exceptions for "blackkeys" folder in "blackkeys" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Info-Debug.plist",
+				"Info-Release.plist",
+			);
+			target = 4E9DE0393060047F001B2F31 /* blackkeys */;
+		};
+		69A50C11C28B478EC4852065 /* Exceptions for "blackkeysWidget" folder in "blackkeysWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = DCA839E8D1711755A70E9ADF /* blackkeysWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		4E9DE03C3060047F001B2F31 /* blackkeys */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4E9DE06230600480001B2F31 /* Exceptions for "blackkeys" folder in "blackkeys" target */,
+			);
+			path = blackkeys;
+			sourceTree = "<group>";
+		};
+		4E9DE04A30600480001B2F31 /* blackkeysTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = blackkeysTests;
+			sourceTree = "<group>";
+		};
+		4E9DE05430600480001B2F31 /* blackkeysUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = blackkeysUITests;
+			sourceTree = "<group>";
+		};
+		87DA3ED75092CE2EA93F45C3 /* blackkeysWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				69A50C11C28B478EC4852065 /* Exceptions for "blackkeysWidget" folder in "blackkeysWidgetExtension" target */,
+			);
+			path = blackkeysWidget;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4E9DE0373060047F001B2F31 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E9DE04430600480001B2F31 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E9DE04E30600480001B2F31 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		88517688A5E8B14F6C8FA4CE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				001F6EF92426A3E9F6B77EBA /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4E9DE0313060047F001B2F31 = {
+			isa = PBXGroup;
+			children = (
+				4E9DE03C3060047F001B2F31 /* blackkeys */,
+				4E9DE04A30600480001B2F31 /* blackkeysTests */,
+				4E9DE05430600480001B2F31 /* blackkeysUITests */,
+				4E9DE03B3060047F001B2F31 /* Products */,
+				805806DBE6E050B2D2A98382 /* Frameworks */,
+				87DA3ED75092CE2EA93F45C3 /* blackkeysWidget */,
+				838B67E1072BBD5044DD8DB7 /* PlazaActivityAttributes.swift */,
+			);
+			sourceTree = "<group>";
+		};
+		4E9DE03B3060047F001B2F31 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4E9DE03A3060047F001B2F31 /* blackkeys.app */,
+				4E9DE04730600480001B2F31 /* blackkeysTests.xctest */,
+				4E9DE05130600480001B2F31 /* blackkeysUITests.xctest */,
+				D58FC8C24EBC03D32B773D35 /* blackkeysWidgetExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		58E98E5DC2BA9C401591D931 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				7FBFCC6FD419F94A3FBAC2CE /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		805806DBE6E050B2D2A98382 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				58E98E5DC2BA9C401591D931 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4E9DE0393060047F001B2F31 /* blackkeys */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4E9DE05930600480001B2F31 /* Build configuration list for PBXNativeTarget "blackkeys" */;
+			buildPhases = (
+				4E9DE0363060047F001B2F31 /* Sources */,
+				4E9DE0373060047F001B2F31 /* Frameworks */,
+				4E9DE0383060047F001B2F31 /* Resources */,
+				734E5062C9C732A16DEE05B5 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6D87C93A5BF0A41B948C47BE /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4E9DE03C3060047F001B2F31 /* blackkeys */,
+			);
+			name = blackkeys;
+			packageProductDependencies = (
+			);
+			productName = blackkeys;
+			productReference = 4E9DE03A3060047F001B2F31 /* blackkeys.app */;
+			productType = "com.apple.product-type.application";
+		};
+		4E9DE04630600480001B2F31 /* blackkeysTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4E9DE05C30600480001B2F31 /* Build configuration list for PBXNativeTarget "blackkeysTests" */;
+			buildPhases = (
+				4E9DE04330600480001B2F31 /* Sources */,
+				4E9DE04430600480001B2F31 /* Frameworks */,
+				4E9DE04530600480001B2F31 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4E9DE04930600480001B2F31 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4E9DE04A30600480001B2F31 /* blackkeysTests */,
+			);
+			name = blackkeysTests;
+			packageProductDependencies = (
+			);
+			productName = blackkeysTests;
+			productReference = 4E9DE04730600480001B2F31 /* blackkeysTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		4E9DE05030600480001B2F31 /* blackkeysUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4E9DE05F30600480001B2F31 /* Build configuration list for PBXNativeTarget "blackkeysUITests" */;
+			buildPhases = (
+				4E9DE04D30600480001B2F31 /* Sources */,
+				4E9DE04E30600480001B2F31 /* Frameworks */,
+				4E9DE04F30600480001B2F31 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4E9DE05330600480001B2F31 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4E9DE05430600480001B2F31 /* blackkeysUITests */,
+			);
+			name = blackkeysUITests;
+			packageProductDependencies = (
+			);
+			productName = blackkeysUITests;
+			productReference = 4E9DE05130600480001B2F31 /* blackkeysUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		DCA839E8D1711755A70E9ADF /* blackkeysWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FB8939CF7B146E293F82B6AE /* Build configuration list for PBXNativeTarget "blackkeysWidgetExtension" */;
+			buildPhases = (
+				1EEABE0C6AD8B35611B44467 /* Sources */,
+				88517688A5E8B14F6C8FA4CE /* Frameworks */,
+				EB11F8093FD8AE7C8B1E3E80 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				87DA3ED75092CE2EA93F45C3 /* blackkeysWidget */,
+			);
+			name = blackkeysWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = blackkeysWidgetExtension;
+			productReference = D58FC8C24EBC03D32B773D35 /* blackkeysWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4E9DE0323060047F001B2F31 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					4E9DE0393060047F001B2F31 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					4E9DE04630600480001B2F31 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 4E9DE0393060047F001B2F31;
+					};
+					4E9DE05030600480001B2F31 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = 4E9DE0393060047F001B2F31;
+					};
+				};
+			};
+			buildConfigurationList = 4E9DE0353060047F001B2F31 /* Build configuration list for PBXProject "blackkeys" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 4E9DE0313060047F001B2F31;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4E9DE03B3060047F001B2F31 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4E9DE0393060047F001B2F31 /* blackkeys */,
+				4E9DE04630600480001B2F31 /* blackkeysTests */,
+				4E9DE05030600480001B2F31 /* blackkeysUITests */,
+				DCA839E8D1711755A70E9ADF /* blackkeysWidgetExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4E9DE0383060047F001B2F31 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E9DE04530600480001B2F31 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E9DE04F30600480001B2F31 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EB11F8093FD8AE7C8B1E3E80 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1EEABE0C6AD8B35611B44467 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E9DE0363060047F001B2F31 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ADFFFCA09EB8FA7B5E9AD178 /* PlazaActivityAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E9DE04330600480001B2F31 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4E9DE04D30600480001B2F31 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4E9DE04930600480001B2F31 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4E9DE0393060047F001B2F31 /* blackkeys */;
+			targetProxy = 4E9DE04830600480001B2F31 /* PBXContainerItemProxy */;
+		};
+		4E9DE05330600480001B2F31 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4E9DE0393060047F001B2F31 /* blackkeys */;
+			targetProxy = 4E9DE05230600480001B2F31 /* PBXContainerItemProxy */;
+		};
+		6D87C93A5BF0A41B948C47BE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = blackkeysWidgetExtension;
+			target = DCA839E8D1711755A70E9ADF /* blackkeysWidgetExtension */;
+			targetProxy = 0193E2B7AC8BB88176B1C054 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		125B7D6491E38AD83AE62D8C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UP9X8Y5R8S;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = blackkeysWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = gcca.blackkeys.blackkeysWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4E9DE05730600480001B2F31 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = UP9X8Y5R8S;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		4E9DE05830600480001B2F31 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = UP9X8Y5R8S;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		4E9DE05A30600480001B2F31 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				API_BASE_URL = "https://ws.blackkeys.fyi";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UP9X8Y5R8S;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "blackkeys/Info-Debug.plist";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = gcca.blackkeys;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4E9DE05B30600480001B2F31 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				API_BASE_URL = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UP9X8Y5R8S;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "blackkeys/Info-Release.plist";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = gcca.blackkeys;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4E9DE05D30600480001B2F31 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UP9X8Y5R8S;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = gcca.blackkeysTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/blackkeys.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/blackkeys";
+			};
+			name = Debug;
+		};
+		4E9DE05E30600480001B2F31 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UP9X8Y5R8S;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = gcca.blackkeysTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/blackkeys.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/blackkeys";
+			};
+			name = Release;
+		};
+		4E9DE06030600480001B2F31 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UP9X8Y5R8S;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = gcca.blackkeysUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = blackkeys;
+			};
+			name = Debug;
+		};
+		4E9DE06130600480001B2F31 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UP9X8Y5R8S;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = gcca.blackkeysUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = blackkeys;
+			};
+			name = Release;
+		};
+		D5A526C276AE811C5F189944 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UP9X8Y5R8S;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = blackkeysWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = gcca.blackkeys.blackkeysWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4E9DE0353060047F001B2F31 /* Build configuration list for PBXProject "blackkeys" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4E9DE05730600480001B2F31 /* Debug */,
+				4E9DE05830600480001B2F31 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4E9DE05930600480001B2F31 /* Build configuration list for PBXNativeTarget "blackkeys" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4E9DE05A30600480001B2F31 /* Debug */,
+				4E9DE05B30600480001B2F31 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4E9DE05C30600480001B2F31 /* Build configuration list for PBXNativeTarget "blackkeysTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4E9DE05D30600480001B2F31 /* Debug */,
+				4E9DE05E30600480001B2F31 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4E9DE05F30600480001B2F31 /* Build configuration list for PBXNativeTarget "blackkeysUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4E9DE06030600480001B2F31 /* Debug */,
+				4E9DE06130600480001B2F31 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FB8939CF7B146E293F82B6AE /* Build configuration list for PBXNativeTarget "blackkeysWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D5A526C276AE811C5F189944 /* Release */,
+				125B7D6491E38AD83AE62D8C /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 4E9DE0323060047F001B2F31 /* Project object */;
+}

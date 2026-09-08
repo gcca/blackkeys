@@ -1,0 +1,71 @@
+global:
+  scrape_interval: 25s
+
+scrape_configs:
+  - job_name: blackkeys-ws
+    metrics_path: /metrics
+    dns_sd_configs:
+      - names:
+          - blackkeys-ws.internal
+        type: AAAA
+        port: 9100
+
+  - job_name: blackkeys-assets
+    metrics_path: /metrics
+    dns_sd_configs:
+      - names:
+          - blackkeys-assets.internal
+        type: AAAA
+        port: 9100
+
+  - job_name: blackkeys-assets-bo
+    metrics_path: /metrics
+    dns_sd_configs:
+      - names:
+          - blackkeys-assets-bo.internal
+        type: AAAA
+        port: 9100
+
+  - job_name: blackkeys-memcached-assets
+    metrics_path: /metrics
+    dns_sd_configs:
+      - names:
+          - 01.process.blackkeys-memcached-assets.internal
+          - 02.process.blackkeys-memcached-assets.internal
+          - 03.process.blackkeys-memcached-assets.internal
+        type: AAAA
+        port: 9100
+
+  - job_name: blackkeys-memcached-assets-cache
+    metrics_path: /metrics
+    dns_sd_configs:
+      - names:
+          - 01.process.blackkeys-memcached-assets.internal
+          - 02.process.blackkeys-memcached-assets.internal
+          - 03.process.blackkeys-memcached-assets.internal
+        type: AAAA
+        port: 9150
+
+  - job_name: blackkeys-memcached-ws
+    metrics_path: /metrics
+    dns_sd_configs:
+      - names:
+          - 01.process.blackkeys-memcached-ws.internal
+          - 02.process.blackkeys-memcached-ws.internal
+          - 03.process.blackkeys-memcached-ws.internal
+          - 04.process.blackkeys-memcached-ws.internal
+          - 05.process.blackkeys-memcached-ws.internal
+        type: AAAA
+        port: 9100
+
+  - job_name: blackkeys-memcached-ws-cache
+    metrics_path: /metrics
+    dns_sd_configs:
+      - names:
+          - 01.process.blackkeys-memcached-ws.internal
+          - 02.process.blackkeys-memcached-ws.internal
+          - 03.process.blackkeys-memcached-ws.internal
+          - 04.process.blackkeys-memcached-ws.internal
+          - 05.process.blackkeys-memcached-ws.internal
+        type: AAAA
+        port: 9150

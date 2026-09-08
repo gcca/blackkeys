@@ -1,0 +1,199 @@
+from __future__ import annotations
+
+import os
+import secrets
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import ClassVar
+
+
+@dataclass(frozen=True, slots=True)
+class Settings:
+
+    AUTH_TTL_SECONDS_DEFAULT: ClassVar[int] = 7 * 24 * 60 * 60
+    BRAND_IMAGE_CACHE_TTL_SECONDS_DEFAULT: ClassVar[int] = 4500
+    REPLICATION_DEFAULT: ClassVar[int] = 1
+    MQ_USER_DEFAULT: ClassVar[str] = "blackkeys"
+    MQ_PASSWORD_DEFAULT: ClassVar[str] = "blackkeys"
+    MQ_VHOST_DEFAULT: ClassVar[str] = "/"
+    MQ_SIGNUP_QUEUE_DEFAULT: ClassVar[str] = "blackkeys-signup"
+    MQ_HYDRATION_QUEUE_DEFAULT: ClassVar[str] = "blackkeys-hydration"
+    TURSO_LOCAL_PATH_DEFAULT: ClassVar[str] = "blackkeys.db"
+    ASSETS_GRPC_TARGET_DEFAULT: ClassVar[str] = "127.0.0.1:50051"
+
+    secret: str
+    auth_ttl_seconds: int
+    cache_nodes: tuple[str, ...] = ()
+    replication: int = REPLICATION_DEFAULT
+    brand_image_cache_ttl_seconds: int = BRAND_IMAGE_CACHE_TTL_SECONDS_DEFAULT
+    mq_nodes: tuple[str, ...] = ()
+    mq_user: str = MQ_USER_DEFAULT
+    mq_password: str = MQ_PASSWORD_DEFAULT
+    mq_vhost: str = MQ_VHOST_DEFAULT
+    mq_signup_queue: str = MQ_SIGNUP_QUEUE_DEFAULT
+    mq_hydration_queue: str = MQ_HYDRATION_QUEUE_DEFAULT
+    assets_host: str | None = None
+    assets_grpc_target: str = ASSETS_GRPC_TARGET_DEFAULT
+    turso_database_url: str | None = None
+    turso_auth_token: str | None = None
+    turso_local_path: str = TURSO_LOCAL_PATH_DEFAULT
+    sentry_dsn: str | None = None
+
+    @staticmethod
+    def FromEnv(environ: Mapping[str, str] | None = None) -> Settings:
+        values = os.environ if environ is None else environ
+        return Settings(
+            secret=_ReadSecret(values),
+            auth_ttl_seconds=_ReadAuthTtlSeconds(values),
+            cache_nodes=_ReadCacheNodes(values),
+            replication=_ReadReplication(values),
+            brand_image_cache_ttl_seconds=_ReadBrandImageCacheTtlSeconds(
+                values
+            ),
+            mq_nodes=_ReadMqNodes(values),
+            mq_user=_ReadMqUser(values),
+            mq_password=_ReadMqPassword(values),
+            mq_vhost=_ReadMqVhost(values),
+            mq_signup_queue=_ReadMqSignupQueue(values),
+            mq_hydration_queue=_ReadMqHydrationQueue(values),
+            assets_host=_ReadAssetsHost(values),
+            assets_grpc_target=_ReadAssetsGrpcTarget(values),
+            turso_database_url=_ReadTursoDatabaseUrl(values),
+            turso_auth_token=_ReadTursoAuthToken(values),
+            turso_local_path=_ReadTursoLocalPath(values),
+            sentry_dsn=_ReadSentryDsn(values),
+        )
+
+
+def _ReadSecret(values: Mapping[str, str]) -> str:
+    secret = values.get("SECRET")
+    if secret is None:
+        secret = secrets.token_urlsafe(32)
+    if not secret:
+        raise ValueError("SECRET must not be empty")
+    return secret
+
+
+def _ReadAuthTtlSeconds(values: Mapping[str, str]) -> int:
+    try:
+        auth_ttl_seconds = int(
+            values.get(
+                "AUTH_TTL_SECONDS",
+                str(Settings.AUTH_TTL_SECONDS_DEFAULT),
+            )
+        )
+    except ValueError as error:
+        raise ValueError("AUTH_TTL_SECONDS must be an integer") from error
+    if auth_ttl_seconds <= 0:
+        raise ValueError("AUTH_TTL_SECONDS must be greater than zero")
+    return auth_ttl_seconds
+
+
+def _ReadNodes(value: str, name: str) -> tuple[str, ...]:
+    nodes = tuple(node.strip() for node in value.split(","))
+    if nodes == ("",):
+        return ()
+    if any(not node for node in nodes):
+        raise ValueError(f"{name} contains an empty node")
+    return nodes
+
+
+def _ReadCacheNodes(values: Mapping[str, str]) -> tuple[str, ...]:
+    return _ReadNodes(values.get("CACHE_NODES", ""), "CACHE_NODES")
+
+
+def _ReadMqNodes(values: Mapping[str, str]) -> tuple[str, ...]:
+    return _ReadNodes(values.get("MQ_NODES", ""), "MQ_NODES")
+
+
+def _ReadReplication(values: Mapping[str, str]) -> int:
+    try:
+        replication = int(
+            values.get("REPLICATION", str(Settings.REPLICATION_DEFAULT))
+        )
+    except ValueError as error:
+        raise ValueError("REPLICATION must be an integer") from error
+    if replication < 0:
+        raise ValueError("REPLICATION must not be negative")
+    return replication
+
+
+def _ReadBrandImageCacheTtlSeconds(values: Mapping[str, str]) -> int:
+    try:
+        ttl_seconds = int(
+            values.get(
+                "BRAND_IMAGE_CACHE_TTL_SECONDS",
+                str(Settings.BRAND_IMAGE_CACHE_TTL_SECONDS_DEFAULT),
+            )
+        )
+    except ValueError as error:
+        raise ValueError(
+            "BRAND_IMAGE_CACHE_TTL_SECONDS must be an integer"
+        ) from error
+    if ttl_seconds <= 0:
+        raise ValueError(
+            "BRAND_IMAGE_CACHE_TTL_SECONDS must be greater than zero"
+        )
+    return ttl_seconds
+
+
+def _ReadMqUser(values: Mapping[str, str]) -> str:
+    return values.get("MQ_USER", Settings.MQ_USER_DEFAULT)
+
+
+def _ReadMqPassword(values: Mapping[str, str]) -> str:
+    return values.get("MQ_PASSWORD", Settings.MQ_PASSWORD_DEFAULT)
+
+
+def _ReadMqVhost(values: Mapping[str, str]) -> str:
+    return values.get("MQ_VHOST", Settings.MQ_VHOST_DEFAULT)
+
+
+def _ReadMqSignupQueue(values: Mapping[str, str]) -> str:
+    mq_signup_queue = values.get(
+        "MQ_SIGNUP_QUEUE", Settings.MQ_SIGNUP_QUEUE_DEFAULT
+    )
+    if not mq_signup_queue:
+        raise ValueError("MQ_SIGNUP_QUEUE must not be empty")
+    return mq_signup_queue
+
+
+def _ReadMqHydrationQueue(values: Mapping[str, str]) -> str:
+    mq_hydration_queue = values.get(
+        "MQ_HYDRATION_QUEUE", Settings.MQ_HYDRATION_QUEUE_DEFAULT
+    )
+    if not mq_hydration_queue:
+        raise ValueError("MQ_HYDRATION_QUEUE must not be empty")
+    return mq_hydration_queue
+
+
+def _ReadAssetsHost(values: Mapping[str, str]) -> str | None:
+    return values.get("ASSETS_HOST") or None
+
+
+def _ReadAssetsGrpcTarget(values: Mapping[str, str]) -> str:
+    assets_grpc_target = values.get(
+        "ASSETS_GRPC_TARGET", Settings.ASSETS_GRPC_TARGET_DEFAULT
+    )
+    if not assets_grpc_target:
+        raise ValueError("ASSETS_GRPC_TARGET must not be empty")
+    return assets_grpc_target
+
+
+def _ReadTursoDatabaseUrl(values: Mapping[str, str]) -> str | None:
+    return values.get("TURSO_DATABASE_URL") or None
+
+
+def _ReadTursoAuthToken(values: Mapping[str, str]) -> str | None:
+    return values.get("TURSO_AUTH_TOKEN") or None
+
+
+def _ReadTursoLocalPath(values: Mapping[str, str]) -> str:
+    return values.get("TURSO_LOCAL_PATH", Settings.TURSO_LOCAL_PATH_DEFAULT)
+
+
+def _ReadSentryDsn(values: Mapping[str, str]) -> str | None:
+    return values.get("SENTRY_DSN") or None
+
+
+settings = Settings.FromEnv()

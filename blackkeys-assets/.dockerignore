@@ -1,0 +1,9 @@
+.git
+.gitignore
+target/
+bin/
+.bin/
+gen/
+.ninja_log
+CTX.md
+LICENSE

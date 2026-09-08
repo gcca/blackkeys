@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package blackkeys.assets.v1;
+
+option go_package = "github.com/plaza-san-miguel/blackkeys/blackkeys-assets/gen/assetsv1;assetsv1";
+
+message Amenity {
+  string name = 1;
+  string value = 2;
+}
+
+message Store {
+  int32 id = 1;
+  string name = 2;
+}
+
+message Brand {
+  string name = 1;
+  string display_name = 2;
+  string logo_url = 3;
+  string picture_url = 4;
+  string description = 5;
+  bool is_active = 6;
+  int32 kiosk_id = 7;
+  repeated Amenity amenities = 8;
+  repeated Store stores = 9;
+  repeated string tags = 10;
+}
+
+message ListRequest {}
+
+message ListResponse {
+  repeated Brand brands = 1;
+}
+
+message ImageRequest {
+  string name = 1;
+}
+
+message ImageResponse {
+  bytes data = 1;
+  string content_type = 2;
+}

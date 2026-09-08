@@ -1,0 +1,33 @@
+<div class="hero relative min-h-svh overflow-hidden">
+  <video class="absolute inset-0 h-full w-full object-cover" autoplay muted loop playsinline preload="auto">
+    <source src="/static/video/SplashBackground.mp4" type="video/mp4" />
+  </video>
+  <div class="hero-overlay bg-gradient-to-b from-black/65 via-black/10 to-black/75"></div>
+  <div class="hero-content w-full max-w-md flex-col px-5 py-24 text-center sm:px-8">
+    {{> wordmark}}
+    <p class="mt-4 text-sm leading-6 text-white/80">Your Plaza San Miguel companion — sign in to explore stores, events, and more.</p>
+    <div class="mt-8 flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
+      <a href="/signin/" class="btn btn-primary min-h-12 rounded-2xl">Sign in</a>
+      <a href="/signup/" class="btn btn-ghost min-h-12 rounded-2xl text-white">Create an account</a>
+    </div>
+    <p class="mt-8 flex justify-center gap-4 text-xs text-white/70">
+      <a href="/stores/">Stores</a>
+      <a href="/events/">Events</a>
+      <a href="/search/">Search</a>
+    </p>
+    <p class="mt-6 flex justify-center gap-4 text-xs text-white/60">
+      <span>⚡ Fast</span>
+      <span>🎨 35 themes</span>
+    </p>
+    <button
+      type="button"
+      class="btn btn-ghost btn-sm mt-6 text-white/70"
+      hx-get="/demo/pulse/"
+      hx-target="#home-demo-result"
+      hx-swap="innerHTML"
+    >
+      Live demo
+    </button>
+    <div id="home-demo-result" aria-live="polite"></div>
+  </div>
+</div>

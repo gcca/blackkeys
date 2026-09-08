@@ -1,0 +1,35 @@
+apiVersion: 1
+
+providers:
+  - name: blackkeys-root
+    orgId: 1
+    folder: Blackkeys
+    folderUid: efz0z43oft5hcb
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/blackkeys
+
+  - name: blackkeys-details
+    orgId: 1
+    folder: details
+    folderUid: bg00ab4ukb9c0e
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/details
+
+  - name: blackkeys-memcached
+    orgId: 1
+    folder: memcached
+    folderUid: blackkeys-memcached-folder
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/memcached
