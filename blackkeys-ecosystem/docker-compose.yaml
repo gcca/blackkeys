@@ -1,0 +1,292 @@
+services:
+  # --- cache ------------------------------------------------------------------
+  memcached1:
+    image: memcached:1.6-alpine
+    profiles: [core]
+    command: ["-m", "256", "-I", "10m"]
+    environment:
+      TZ: UTC
+    ports:
+      - "11211:11211"
+    restart: unless-stopped
+
+  memcached2:
+    image: memcached:1.6-alpine
+    profiles: [core]
+    command: ["-m", "256", "-I", "10m"]
+    environment:
+      TZ: UTC
+    ports:
+      - "11212:11211"
+    restart: unless-stopped
+
+  # --- broker -----------------------------------------------------------------
+  rabbitmq1:
+    image: rabbitmq:4-management-alpine
+    profiles: [core]
+    hostname: rabbitmq1
+    environment:
+      TZ: UTC
+      RABBITMQ_ERLANG_COOKIE: blackkeys-ecosystem
+      RABBITMQ_DEFAULT_USER: blackkeys
+      RABBITMQ_DEFAULT_PASS: blackkeys
+    configs:
+      - source: rabbitmq.conf
+        target: /etc/rabbitmq/rabbitmq.conf
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "15692:15692"
+    volumes:
+      - rabbitmq1:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  rabbitmq2:
+    image: rabbitmq:4-management-alpine
+    profiles: [core]
+    hostname: rabbitmq2
+    environment:
+      TZ: UTC
+      RABBITMQ_ERLANG_COOKIE: blackkeys-ecosystem
+      RABBITMQ_DEFAULT_USER: blackkeys
+      RABBITMQ_DEFAULT_PASS: blackkeys
+    configs:
+      - source: rabbitmq.conf
+        target: /etc/rabbitmq/rabbitmq.conf
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+      - "15693:15692"
+    volumes:
+      - rabbitmq2:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  rabbitmq3:
+    image: rabbitmq:4-management-alpine
+    profiles: [core]
+    hostname: rabbitmq3
+    environment:
+      TZ: UTC
+      RABBITMQ_ERLANG_COOKIE: blackkeys-ecosystem
+      RABBITMQ_DEFAULT_USER: blackkeys
+      RABBITMQ_DEFAULT_PASS: blackkeys
+    configs:
+      - source: rabbitmq.conf
+        target: /etc/rabbitmq/rabbitmq.conf
+    ports:
+      - "5674:5672"
+      - "15674:15672"
+      - "15694:15692"
+    volumes:
+      - rabbitmq3:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  # --- exporters --------------------------------------------------------------
+  memcached-exporter1:
+    image: prom/memcached-exporter:v0.17.0
+    profiles: [observability]
+    command: ["--memcached.address=memcached1:11211"]
+    environment:
+      TZ: UTC
+    ports:
+      - "9150:9150"
+    depends_on:
+      - memcached1
+    restart: unless-stopped
+
+  memcached-exporter2:
+    image: prom/memcached-exporter:v0.17.0
+    profiles: [observability]
+    command: ["--memcached.address=memcached2:11211"]
+    environment:
+      TZ: UTC
+    ports:
+      - "9151:9150"
+    depends_on:
+      - memcached2
+    restart: unless-stopped
+
+  # --- observability ----------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [observability]
+    environment:
+      TZ: UTC
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    configs:
+      - source: prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus:/prometheus
+    depends_on:
+      - memcached-exporter1
+      - memcached-exporter2
+      - rabbitmq1
+      - rabbitmq2
+      - rabbitmq3
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:12.2.0
+    profiles: [observability]
+    environment:
+      TZ: UTC
+      GF_SECURITY_ADMIN_USER: blackkeys
+      GF_SECURITY_ADMIN_PASSWORD: blackkeys
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    configs:
+      - source: grafana-datasource.yaml
+        target: /etc/grafana/provisioning/datasources/prometheus.yaml
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana:/var/lib/grafana
+    restart: unless-stopped
+
+  # --- apps -------------------------------------------------------------------
+  blackkeys-ws:
+    build:
+      context: ../blackkeys-ws
+      dockerfile: Dockerfile
+    image: blackkeys-ws:local
+    profiles: [apps]
+    environment:
+      TZ: UTC
+      SECRET: blackkeys
+      CACHE_NODES: memcached1:11211,memcached2:11211
+      MQ_NODES: rabbitmq1:5672,rabbitmq2:5672,rabbitmq3:5672
+      MQ_USER: blackkeys
+      MQ_PASSWORD: blackkeys
+    ports:
+      - "8000:8000"
+    depends_on:
+      - memcached1
+      - memcached2
+      - rabbitmq1
+      - rabbitmq2
+      - rabbitmq3
+    restart: unless-stopped
+
+  blackkeys-hydrant:
+    build:
+      context: ../blackkeys-hydrant
+      dockerfile: Dockerfile
+      args:
+        C3_PLATFORM: linux/arm64
+    image: blackkeys-hydrant:local
+    platform: linux/arm64
+    profiles: [apps]
+    environment:
+      TZ: UTC
+      CACHE_NODES: memcached1:11211,memcached2:11211
+      MQ_NODES: rabbitmq1:5672,rabbitmq2:5672,rabbitmq3:5672
+      MQ_USER: blackkeys
+      MQ_PASSWORD: blackkeys
+    depends_on:
+      - memcached1
+      - memcached2
+      - rabbitmq1
+      - rabbitmq2
+      - rabbitmq3
+    restart: unless-stopped
+
+# --- configs ------------------------------------------------------------------
+configs:
+  rabbitmq.conf:
+    content: |
+      cluster_name = blackkeys
+      cluster_formation.peer_discovery_backend = classic_config
+      cluster_formation.classic_config.nodes.1 = rabbit@rabbitmq1
+      cluster_formation.classic_config.nodes.2 = rabbit@rabbitmq2
+      cluster_formation.classic_config.nodes.3 = rabbit@rabbitmq3
+      default_queue_type = quorum
+      loopback_users = none
+
+  prometheus.yml:
+    content: |
+      global:
+        scrape_interval: 25s
+
+      scrape_configs:
+        - job_name: memcached
+          static_configs:
+            - targets: ["memcached-exporter1:9150"]
+              labels:
+                instance: memcached1
+            - targets: ["memcached-exporter2:9150"]
+              labels:
+                instance: memcached2
+
+        - job_name: rabbitmq
+          scrape_interval: 15s
+          static_configs:
+            - targets: ["rabbitmq1:15692"]
+              labels:
+                instance: rabbitmq1
+            - targets: ["rabbitmq2:15692"]
+              labels:
+                instance: rabbitmq2
+            - targets: ["rabbitmq3:15692"]
+              labels:
+                instance: rabbitmq3
+
+        - job_name: rabbitmq-queues
+          metrics_path: /metrics/detailed
+          params:
+            family:
+              - queue_coarse_metrics
+              - queue_metrics
+          static_configs:
+            - targets: ["rabbitmq1:15692"]
+              labels:
+                instance: rabbitmq1
+            - targets: ["rabbitmq2:15692"]
+              labels:
+                instance: rabbitmq2
+            - targets: ["rabbitmq3:15692"]
+              labels:
+                instance: rabbitmq3
+
+  grafana-datasource.yaml:
+    content: |
+      apiVersion: 1
+
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          uid: blackkeys-prometheus
+          access: proxy
+          url: http://prometheus:9090
+          isDefault: true
+          jsonData:
+            timeInterval: 25s
+
+# --- volumes ------------------------------------------------------------------
+volumes:
+  grafana:
+  prometheus:
+  rabbitmq1:
+  rabbitmq2:
+  rabbitmq3:

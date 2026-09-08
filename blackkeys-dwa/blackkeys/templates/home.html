@@ -1,0 +1,77 @@
+<div class="mx-auto flex w-full max-w-xl flex-col gap-10 px-4 py-12 sm:max-w-2xl sm:gap-12 sm:py-20 lg:max-w-3xl lg:py-28">
+  <section class="relative pt-14 sm:pt-16">
+    <div class="absolute right-0 top-0 flex items-center gap-1 rounded-full border border-base-300 bg-base-100/80 py-1 pl-3 pr-1 shadow-sm backdrop-blur sm:gap-2 sm:py-1.5 sm:pl-4">
+      <span aria-hidden="true">🎨</span>
+      <select id="theme-select" class="select select-ghost select-xs w-28 focus:outline-none sm:select-sm sm:w-32" aria-label="Theme">
+        {{#themes}}
+        <option value="{{name}}">{{label}}</option>
+        {{/themes}}
+      </select>
+    </div>
+
+    <h1 class="text-6xl font-black leading-[0.95] tracking-tight sm:text-8xl lg:text-9xl">
+      <span class="block bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">BLACK</span>
+      <span class="block bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">KEYS.</span>
+    </h1>
+    <p class="mt-4 max-w-sm text-base leading-7 opacity-70 sm:mt-6 sm:max-w-md sm:text-lg lg:text-xl">Fast. Simple. Yours.</p>
+
+    <div class="mt-8 flex flex-col items-start gap-3 sm:mt-10 sm:flex-row sm:items-center sm:gap-5">
+      <a class="btn btn-primary min-h-12 px-6" href="/signin/">
+        Sign in
+        <span aria-hidden="true">→</span>
+      </a>
+      <a class="link link-hover text-sm opacity-70" href="/signup/">Create an account</a>
+    </div>
+  </section>
+
+  <section class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm opacity-70 sm:text-base">
+    <span>⚡ Fast</span>
+    <span aria-hidden="true">·</span>
+    <span>🎨 35 themes</span>
+  </section>
+
+  <section>
+    <button
+      class="btn btn-ghost btn-sm min-h-10 gap-2 rounded-full border border-base-300"
+      hx-get="/demo/pulse/"
+      hx-target="#demo-result"
+      hx-swap="innerHTML"
+      hx-disabled-elt="this"
+    >
+      <span class="htmx-indicator loading loading-spinner loading-xs" aria-hidden="true"></span>
+      <span aria-hidden="true">○</span> Live demo
+    </button>
+    <div id="demo-result" class="mt-2 min-h-4" aria-live="polite"></div>
+  </section>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const picker = document.getElementById('theme-select');
+    const storageKey = 'blackkeys-dwa-theme';
+    const fallbackTheme = 'dim';
+    const supportedThemes = Array.from(picker.options, function (option) {
+      return option.value;
+    });
+
+    function SetTheme(theme, persist) {
+      const nextTheme = supportedThemes.includes(theme) ? theme : fallbackTheme;
+      document.documentElement.dataset.theme = nextTheme;
+      picker.value = nextTheme;
+      if (persist) {
+        try {
+          localStorage.setItem(storageKey, nextTheme);
+        } catch (error) {}
+      }
+    }
+
+    let savedTheme = fallbackTheme;
+    try {
+      savedTheme = localStorage.getItem(storageKey) || fallbackTheme;
+    } catch (error) {}
+    SetTheme(savedTheme, false);
+    picker.addEventListener('change', function () {
+      SetTheme(picker.value, true);
+    });
+  });
+</script>

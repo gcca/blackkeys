@@ -1,0 +1,45 @@
+<div class="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-md items-center px-4 py-8 sm:py-12">
+  <section class="card w-full border border-base-300 bg-base-100 shadow-xl">
+    <div class="card-body gap-5 p-5 sm:p-8">
+      <div>
+        <div class="badge badge-primary badge-outline mb-3">Welcome back</div>
+        <h1 class="text-3xl font-bold">Sign in</h1>
+        <p class="mt-2 text-sm leading-6 opacity-70">Use your Blackkeys credentials to continue.</p>
+      </div>
+
+      {{#show_notice}}
+      <div class="alert alert-{{notice_kind}}" role="status">
+        <div>
+          <div class="font-semibold">{{notice_title}}</div>
+          <div class="text-sm">{{notice_message}}</div>
+        </div>
+      </div>
+      {{/show_notice}}
+
+      <form
+        method="post"
+        action="/signin/"
+        hx-post="/signin/"
+        hx-target="#auth-result"
+        hx-swap="innerHTML"
+        hx-disabled-elt="find button"
+        class="space-y-4"
+      >
+        <label class="form-control w-full">
+          <span class="label-text mb-2 font-medium">Username</span>
+          <input class="input input-bordered min-h-12 w-full" name="username" value="{{username}}" autocomplete="username" autocapitalize="none" required />
+        </label>
+        <label class="form-control w-full">
+          <span class="label-text mb-2 font-medium">Password</span>
+          <input class="input input-bordered min-h-12 w-full" name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <button class="btn btn-primary min-h-12 w-full" type="submit">
+          <span class="htmx-indicator loading loading-spinner loading-sm" aria-hidden="true"></span>
+          Sign in
+        </button>
+      </form>
+      <div id="auth-result" aria-live="polite"></div>
+      <p class="text-center text-sm opacity-70">New here? <a class="link link-primary" href="/signup/">Create an account</a></p>
+    </div>
+  </section>
+</div>
