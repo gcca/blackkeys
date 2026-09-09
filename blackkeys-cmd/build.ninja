@@ -1,0 +1,64 @@
+rule cargo_build
+  command = cargo build --manifest-path list_users/Cargo.toml
+  description = CARGO BUILD list_users
+  pool = console
+  restat = 1
+
+rule cargo_build_create_user
+  command = LIBRARY_PATH=/opt/homebrew/opt/argon2/lib cargo build --manifest-path create_user/Cargo.toml
+  description = CARGO BUILD create_user
+  pool = console
+  restat = 1
+
+rule cargo_build_remove_user
+  command = cargo build --manifest-path remove_user/Cargo.toml
+  description = CARGO BUILD remove_user
+  pool = console
+  restat = 1
+
+rule cargo_build_change_password
+  command = LIBRARY_PATH=/opt/homebrew/opt/argon2/lib cargo build --manifest-path change_password/Cargo.toml
+  description = CARGO BUILD change_password
+  pool = console
+  restat = 1
+
+rule copy_binary
+  command = mkdir -p bin && cp $in $out
+  description = COPY $out
+
+rule cargo_test_all
+  command = cargo test --manifest-path list_users/Cargo.toml && cargo test --manifest-path remove_user/Cargo.toml && LIBRARY_PATH=/opt/homebrew/opt/argon2/lib cargo test --manifest-path create_user/Cargo.toml && LIBRARY_PATH=/opt/homebrew/opt/argon2/lib cargo test --manifest-path change_password/Cargo.toml
+  description = CARGO TEST all
+  pool = console
+
+build cargo-always: phony
+
+build list_users/target/debug/blackkeys-list_users: cargo_build list_users/Cargo.toml list_users/Cargo.lock list_users/src/main.rs list_users/src/sqlite3.rs cargo-always
+
+build bin/blackkeys-list_users: copy_binary list_users/target/debug/blackkeys-list_users
+
+build list-users: phony bin/blackkeys-list_users
+
+build create_user/target/debug/blackkeys-create_user: cargo_build_create_user create_user/Cargo.toml create_user/Cargo.lock create_user/src/main.rs create_user/src/argon2id.rs create_user/src/sqlite3.rs cargo-always
+
+build bin/blackkeys-create_user: copy_binary create_user/target/debug/blackkeys-create_user
+
+build create-user: phony bin/blackkeys-create_user
+
+build remove_user/target/debug/blackkeys-remove_user: cargo_build_remove_user remove_user/Cargo.toml remove_user/Cargo.lock remove_user/src/main.rs remove_user/src/sqlite3.rs cargo-always
+
+build bin/blackkeys-remove_user: copy_binary remove_user/target/debug/blackkeys-remove_user
+
+build remove-user: phony bin/blackkeys-remove_user
+
+build change_password/target/debug/blackkeys-change_password: cargo_build_change_password change_password/Cargo.toml change_password/Cargo.lock change_password/src/main.rs change_password/src/argon2id.rs change_password/src/sqlite3.rs cargo-always
+
+build bin/blackkeys-change_password: copy_binary change_password/target/debug/blackkeys-change_password
+
+build change-password: phony bin/blackkeys-change_password
+
+build all: phony create-user list-users remove-user change-password
+
+build test: cargo_test_all list_users/Cargo.toml list_users/Cargo.lock list_users/src/main.rs list_users/src/sqlite3.rs create_user/Cargo.toml create_user/Cargo.lock create_user/src/main.rs create_user/src/argon2id.rs create_user/src/sqlite3.rs remove_user/Cargo.toml remove_user/Cargo.lock remove_user/src/main.rs remove_user/src/sqlite3.rs change_password/Cargo.toml change_password/Cargo.lock change_password/src/main.rs change_password/src/argon2id.rs change_password/src/sqlite3.rs cargo-always
+
+default all

@@ -1,10 +1,14 @@
 import asyncio
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from blackkeys.blueprints.index import Close, Pull
-from blackkeys.core.conf import Settings
+from turso.lib_aio import connect as connect_local
+
+from blackkeys.blueprints.index import Close, Pull, StartMonitor
+from blackkeys.core.conf import Settings, settings
 from blackkeys.persistence.schema import (
     InitSchema,
     SchemaValidationError,
@@ -216,7 +220,8 @@ class ValidateSchemaTests(unittest.TestCase):
     def TestSkipsWhenSchemaIsEmpty(self) -> None:
         db = FakeDatabase()
 
-        asyncio.run(ValidateSchema(db))
+        with patch("blackkeys.persistence.schema.EXPECTED_SCHEMA", {}):
+            asyncio.run(ValidateSchema(db))
 
         self.assertEqual(db.executed, [])
 
@@ -230,41 +235,80 @@ class ValidateSchemaTests(unittest.TestCase):
 
         with patch(
             "blackkeys.persistence.schema.EXPECTED_SCHEMA",
-            {"users": frozenset({"id"})},
+            {"user": frozenset({"id"})},
         ), self.assertRaises(SchemaValidationError) as raised:
             asyncio.run(ValidateSchema(db))
 
-        self.assertIn("missing table 'users'", str(raised.exception))
+        self.assertIn("missing table 'user'", str(raised.exception))
 
     def TestRejectsMissingColumns(self) -> None:
         db = FakeDatabase(
             execute_map={
-                "SELECT name FROM sqlite_master": FakeCursor([("users",)]),
+                "SELECT name FROM sqlite_master": FakeCursor([("user",)]),
                 "PRAGMA table_info": FakeCursor([(0, "id")]),
             }
         )
 
         with patch(
             "blackkeys.persistence.schema.EXPECTED_SCHEMA",
-            {"users": frozenset({"id", "username"})},
+            {"user": frozenset({"id", "username"})},
         ), self.assertRaises(SchemaValidationError) as raised:
             asyncio.run(ValidateSchema(db))
 
         self.assertIn("missing columns: username", str(raised.exception))
 
+    def TestRejectsInvalidCreatedAtDefinition(self) -> None:
+        cases = (
+            ("TEXT", 1, "(unixepoch())", "must use INTEGER"),
+            ("INTEGER", 0, "(unixepoch())", "must be NOT NULL"),
+            ("INTEGER", 1, "(datetime('now'))", "must default"),
+        )
+        for column_type, not_null, default, expected in cases:
+            with self.subTest(expected=expected):
+                db = FakeDatabase(
+                    execute_map={
+                        "SELECT name FROM sqlite_master": FakeCursor(
+                            [("user",)]
+                        ),
+                        "PRAGMA table_info": FakeCursor(
+                            [
+                                (0, "username", "TEXT", 1, None, 1),
+                                (1, "password", "TEXT", 1, None, 0),
+                                (2, "email", "TEXT", 1, None, 0),
+                                (
+                                    3,
+                                    "created_at",
+                                    column_type,
+                                    not_null,
+                                    default,
+                                    0,
+                                ),
+                            ]
+                        ),
+                    }
+                )
+
+                with self.assertRaises(SchemaValidationError) as raised:
+                    asyncio.run(ValidateSchema(db))
+
+                self.assertIn(expected, str(raised.exception))
+
     def TestAcceptsAMatchingSchema(self) -> None:
         db = FakeDatabase(
             execute_map={
-                "SELECT name FROM sqlite_master": FakeCursor([("users",)]),
-                "PRAGMA table_info": FakeCursor([(0, "id"), (1, "username")]),
+                "SELECT name FROM sqlite_master": FakeCursor([("user",)]),
+                "PRAGMA table_info": FakeCursor(
+                    [
+                        (0, "username", "TEXT", 1, None, 1),
+                        (1, "password", "TEXT", 1, None, 0),
+                        (2, "email", "TEXT", 1, None, 0),
+                        (3, "created_at", "INTEGER", 1, "(unixepoch ())", 0),
+                    ]
+                ),
             }
         )
 
-        with patch(
-            "blackkeys.persistence.schema.EXPECTED_SCHEMA",
-            {"users": frozenset({"id", "username"})},
-        ):
-            asyncio.run(ValidateSchema(db))
+        asyncio.run(ValidateSchema(db))
 
 
 class InitSchemaTests(unittest.TestCase):
@@ -276,14 +320,53 @@ class InitSchemaTests(unittest.TestCase):
 
         with patch(
             "blackkeys.persistence.schema.TABLE_DDL",
-            {"users": "CREATE TABLE IF NOT EXISTS users (username TEXT)"},
+            {"user": 'CREATE TABLE IF NOT EXISTS "user" (username TEXT)'},
         ):
             asyncio.run(InitSchema(db))
 
         self.assertEqual(
             db.executed,
-            [("CREATE TABLE IF NOT EXISTS users (username TEXT)", ())],
+            [('CREATE TABLE IF NOT EXISTS "user" (username TEXT)', ())],
         )
+
+
+class SchemaIntegrationTests(unittest.TestCase):
+    def TestCreatesFreshSchemaWithEpochTimestamp(self) -> None:
+        async def CreateAndRead(path: str) -> tuple[object, list[object]]:
+            db = await connect_local(path)
+            try:
+                await InitSchema(db)
+                await ValidateSchema(db)
+                await db.execute(
+                    'INSERT INTO "user" (username, password, email) '
+                    "VALUES (?, ?, ?)",
+                    ("alice", "hash", "alice@example.com"),
+                )
+                await db.commit()
+                timestamp = await (
+                    await db.execute(
+                        "SELECT typeof(created_at), created_at, unixepoch() "
+                        'FROM "user"'
+                    )
+                ).fetchone()
+                tables = await (
+                    await db.execute(
+                        "SELECT name FROM sqlite_master "
+                        "WHERE type='table' AND name='user'"
+                    )
+                ).fetchall()
+                return timestamp, tables
+            finally:
+                await db.close()
+
+        with tempfile.TemporaryDirectory() as directory:
+            timestamp, tables = asyncio.run(
+                CreateAndRead(str(Path(directory) / "schema.db"))
+            )
+
+        self.assertEqual(tables, [("user",)])
+        self.assertEqual(timestamp[0], "integer")
+        self.assertLessEqual(abs(timestamp[1] - timestamp[2]), 1)
 
 
 class IndexLifecycleTests(unittest.TestCase):
@@ -338,3 +421,16 @@ class IndexLifecycleTests(unittest.TestCase):
 
         close.assert_awaited_once_with(db)
         self.assertIsNone(app.ctx.db)
+
+    def TestStartMonitorInitializesAndNotifiesOnce(self) -> None:
+        app = SimpleNamespace(ctx=SimpleNamespace())
+
+        with patch(
+            "blackkeys.blueprints.index.InitMonitor",
+        ) as init_monitor, patch(
+            "blackkeys.blueprints.index.NotifyServerStarted",
+        ) as notify:
+            asyncio.run(StartMonitor(app))
+
+        init_monitor.assert_called_once_with(settings)
+        notify.assert_called_once_with()

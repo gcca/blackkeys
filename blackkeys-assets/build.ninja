@@ -1,0 +1,61 @@
+module = github.com/plaza-san-miguel/blackkeys/blackkeys-assets
+go = go
+gofmt = gofmt
+protoc = protoc
+
+rule go_tool
+  command = $go build -o $out $pkg
+  description = GO BUILD $out
+  pool = console
+  restat = 1
+
+rule protoc_go
+  command = PATH=$$PWD/.bin:$$PATH $protoc -I protos --go_out=. --go_opt=module=$module --go-grpc_out=. --go-grpc_opt=module=$module $in
+  description = PROTOC --go_out $in
+  pool = console
+  restat = 1
+
+rule go_build
+  command = $go build -o $out .
+  description = GO BUILD $out
+  pool = console
+  restat = 1
+
+rule go_test
+  command = $go test ./...
+  description = GO TEST ./...
+  pool = console
+
+rule go_vet
+  command = $go vet ./...
+  description = GO VET ./...
+  pool = console
+
+rule gofmt_check
+  command = unformatted=$$($gofmt -l main.go main_test.go blackkeys) && test -z "$$unformatted" || { echo "$$unformatted"; exit 1; }
+  description = GOFMT -l
+  pool = console
+
+build .bin/protoc-gen-go: go_tool go.mod go.sum
+  pkg = google.golang.org/protobuf/cmd/protoc-gen-go
+
+build .bin/protoc-gen-go-grpc: go_tool go.mod go.sum
+  pkg = google.golang.org/grpc/cmd/protoc-gen-go-grpc
+
+build gen/assetsv1/messages.pb.go gen/assetsv1/service.pb.go gen/assetsv1/service_grpc.pb.go: protoc_go protos/v1/messages.proto protos/v1/service.proto | .bin/protoc-gen-go .bin/protoc-gen-go-grpc
+
+build protos: phony gen/assetsv1/messages.pb.go gen/assetsv1/service.pb.go gen/assetsv1/service_grpc.pb.go
+
+build bin/blackkeys-assets: go_build main.go blackkeys/handling/stores.go blackkeys/handling/stores.json go.mod go.sum | protos
+
+build build: phony bin/blackkeys-assets
+
+build test: go_test main.go main_test.go blackkeys/handling/stores.go blackkeys/handling/stores_test.go blackkeys/handling/stores.json go.mod go.sum | protos
+
+build vet: go_vet main.go main_test.go blackkeys/handling/stores.go blackkeys/handling/stores_test.go go.mod go.sum | protos
+
+build fmt: gofmt_check main.go main_test.go blackkeys/handling/stores.go blackkeys/handling/stores_test.go
+
+build all: phony build test vet fmt
+
+default build

@@ -1,22 +1,13 @@
 import sanic
 import sanic.response
-
 from blackkeys.templating import RenderPage, RenderTemplate
-from blackkeys.themes import ThemeChoices
 
 blueprint = sanic.Blueprint("index")
 
 
 @blueprint.get("/")
 async def Home(_: sanic.Request) -> sanic.HTTPResponse:
-    return sanic.response.html(
-        RenderPage(
-            "home",
-            title="Home",
-            home_active=True,
-            themes=ThemeChoices(),
-        )
-    )
+    return sanic.response.html(RenderPage("home", title="Home"))
 
 
 @blueprint.get("/demo/pulse/")

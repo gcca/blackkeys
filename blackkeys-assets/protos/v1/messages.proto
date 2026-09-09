@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package blackkeys.assets.v1;
+
+option go_package = "github.com/plaza-san-miguel/blackkeys/blackkeys-assets/gen/assetsv1;assetsv1";
+
+message Category {
+  int32 id = 1;
+  string name = 2;
+}
+
+message Subcategory {
+  int32 id = 1;
+  string name = 2;
+  Category category = 3;
+}
+
+message Location {
+  int32 id = 1;
+  string name = 2;
+}
+
+message StoreLocation {
+  Location location = 1;
+}
+
+message Store {
+  int32 id = 1;
+  string name = 2;
+  int32 directory_id = 3;
+  bool is_active = 4;
+  bool is_new = 5;
+  string logo = 6;
+  string store_photo = 7;
+  string description = 8;
+  string phone = 9;
+  string website = 10;
+  string facebook = 11;
+  string instagram = 12;
+  string tiktok = 13;
+  Subcategory subcategory = 14;
+  repeated StoreLocation stores = 15;
+}
+
+message ListRequest {}
+
+message ListResponse {
+  repeated Store stores = 1;
+}

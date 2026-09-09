@@ -31,6 +31,7 @@ class Settings:
     turso_database_url: str | None = None
     turso_auth_token: str | None = None
     turso_local_path: str = TURSO_LOCAL_PATH_DEFAULT
+    sentry_dsn: str | None = None
 
     @staticmethod
     def FromEnv(environ: Mapping[str, str] | None = None) -> Settings:
@@ -49,6 +50,7 @@ class Settings:
             turso_database_url=_ReadTursoDatabaseUrl(values),
             turso_auth_token=_ReadTursoAuthToken(values),
             turso_local_path=_ReadTursoLocalPath(values),
+            sentry_dsn=_ReadSentryDsn(values),
         )
 
 
@@ -137,6 +139,10 @@ def _ReadTursoAuthToken(values: Mapping[str, str]) -> str | None:
 
 def _ReadTursoLocalPath(values: Mapping[str, str]) -> str:
     return values.get("TURSO_LOCAL_PATH", Settings.TURSO_LOCAL_PATH_DEFAULT)
+
+
+def _ReadSentryDsn(values: Mapping[str, str]) -> str | None:
+    return values.get("SENTRY_DSN") or None
 
 
 settings = Settings.FromEnv()

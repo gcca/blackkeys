@@ -2,8 +2,11 @@
 <html lang="en" data-theme="{{default_theme}}">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>{{app_name}} | {{title}}</title>
     <script>
       try {
@@ -16,27 +19,59 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0" integrity="sha384-BvJpBiO8Kh31EqtJe5DRIeWrHWnCGkwytKs9NKFi86Hhw96dEqdEMzZDeK9iEGTc" crossorigin="anonymous"></script>
   </head>
-  <body class="min-h-screen bg-base-200 text-base-content antialiased">
-    <header class="sticky top-0 z-20 border-b border-base-300 bg-base-100/95 backdrop-blur">
-      <nav class="navbar mx-auto min-h-14 max-w-6xl px-2 sm:px-4" aria-label="Main navigation">
-        <div class="navbar-start">
-          <a href="/" class="btn btn-ghost gap-2 px-2 text-base sm:text-lg" aria-label="Blackkeys home">
-            <span class="flex size-8 items-center justify-center rounded-lg bg-primary font-black text-primary-content">B</span>
-            <span class="hidden min-[23rem]:inline">{{app_name}}</span>
-          </a>
-        </div>
-        <div class="navbar-end gap-1">
-          <a href="/" class="btn btn-ghost btn-sm {{#home_active}}btn-active{{/home_active}}">Home</a>
-          <a href="/signin/" class="btn btn-ghost btn-sm {{#signin_active}}btn-active{{/signin_active}}">Sign in</a>
-          <a href="/signup/" class="btn btn-primary btn-sm {{#signup_active}}btn-active{{/signup_active}}">Sign up</a>
-        </div>
-      </nav>
-    </header>
-    <main>
+  <body class="min-h-svh overflow-x-hidden bg-base-100 text-base-content antialiased">
+    {{#show_theme_picker}}
+    <div
+      class="fixed z-20"
+      style="right: max(1rem, env(safe-area-inset-right)); top: max(1rem, env(safe-area-inset-top))"
+    >
+      <label class="flex min-h-11 items-center gap-1 rounded-full border border-base-300 bg-base-100/90 py-1 pl-3 pr-1 shadow-sm backdrop-blur">
+        <span aria-hidden="true">🎨</span>
+        <span class="sr-only">Theme</span>
+        <select id="theme-select" class="select select-ghost select-sm w-32 rounded-full focus:outline-none" aria-label="Theme">
+          {{#themes}}
+          <option value="{{name}}">{{label}}</option>
+          {{/themes}}
+        </select>
+      </label>
+    </div>
+    {{/show_theme_picker}}
+    <main class="min-h-svh">
       {{{content}}}
     </main>
-    <footer class="mx-auto max-w-6xl px-4 py-8 text-center text-sm opacity-60">
-      A simple home for Blackkeys.
-    </footer>
+    {{#show_theme_picker}}
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const picker = document.getElementById('theme-select');
+        if (!picker) return;
+
+        const storageKey = 'blackkeys-dwa-theme';
+        const fallbackTheme = 'dim';
+        const supportedThemes = Array.from(picker.options, function (option) {
+          return option.value;
+        });
+
+        function SetTheme(theme, persist) {
+          const nextTheme = supportedThemes.includes(theme) ? theme : fallbackTheme;
+          document.documentElement.dataset.theme = nextTheme;
+          picker.value = nextTheme;
+          if (persist) {
+            try {
+              localStorage.setItem(storageKey, nextTheme);
+            } catch (error) {}
+          }
+        }
+
+        let savedTheme = fallbackTheme;
+        try {
+          savedTheme = localStorage.getItem(storageKey) || fallbackTheme;
+        } catch (error) {}
+        SetTheme(savedTheme, false);
+        picker.addEventListener('change', function () {
+          SetTheme(picker.value, true);
+        });
+      });
+    </script>
+    {{/show_theme_picker}}
   </body>
 </html>

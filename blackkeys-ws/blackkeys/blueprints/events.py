@@ -1,6 +1,7 @@
 import sanic
 import sanic.response
 
+from blackkeys.blueprints.middlewares import RequireSession
 from blackkeys.core.conf import settings
 from blackkeys.repositories import MakeEventsRepository
 
@@ -19,6 +20,7 @@ async def CloseEventsRepository(_: sanic.Sanic) -> None:
 
 
 @blueprint.get("/list")
+@RequireSession
 async def List(_: sanic.Request) -> sanic.HTTPResponse:
     value = await events_repository.List()
     if value is not None:

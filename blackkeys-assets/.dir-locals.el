@@ -1,1 +1,1 @@
-((nil . ((project-vc-extra-root-markers . ("Cargo.toml")))))
+((nil . ((project-vc-extra-root-markers . ("go.mod")))))

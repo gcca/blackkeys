@@ -25,8 +25,9 @@ from blackkeys.backends.stores.local import (
     LocalCacheGet,
     LocalCacheSet,
 )
-from blackkeys.blueprints.events import List
+from blackkeys.blueprints.events import List, blueprint
 from blackkeys.repositories import EventsRepository
+from tests import AuthorizedRequest
 
 unittest.defaultTestLoader.testMethodPrefix = "Test"
 
@@ -154,11 +155,15 @@ class EventsServiceTests(unittest.TestCase):
     def TestReturnsNoneWhenTheRequestFails(self) -> None:
         service = EventsService("http://assets")
 
-        with patch(
-            "blackkeys.backends.services.events.httpx2.AsyncClient",
-            FakeAsyncClientFactory(error=httpx2.ConnectError("down")),
+        with (
+            patch(
+                "blackkeys.backends.services.events.httpx2.AsyncClient",
+                FakeAsyncClientFactory(error=httpx2.ConnectError("down")),
+            ),
+            patch("blackkeys.backends.services.events.logger") as logger,
         ):
             self.assertIsNone(asyncio.run(service.List()))
+        logger.warning.assert_called_once()
 
 
 class EventsRepositoryTests(unittest.TestCase):
@@ -181,6 +186,18 @@ class EventsRepositoryTests(unittest.TestCase):
         cache.reserve.assert_not_called()
         publisher.Publish.assert_not_called()
         service.List.assert_not_called()
+
+    def TestIgnoresANonListLocalCacheValue(self) -> None:
+        LocalCacheSet(EVENTS_LIST_CACHE_KEY, {"id": 1})
+        service = AsyncMock()
+        service.List.return_value = [{"id": 2}]
+        repository = EventsRepository(None, None, service)
+
+        value = asyncio.run(repository.List())
+
+        self.assertEqual(value, [{"id": 2}])
+        service.List.assert_awaited_once_with()
+        self.assertEqual(LocalCacheGet(EVENTS_LIST_CACHE_KEY), [{"id": 2}])
 
     def TestReturnsFromMemcachedAndPopulatesLocalCache(self) -> None:
         cache = MagicMock()
@@ -217,7 +234,7 @@ class EventsRepositoryTests(unittest.TestCase):
 
 
 class ListEndpointTests(unittest.TestCase):
-    request = SimpleNamespace(json=None)
+    request = AuthorizedRequest()
 
     def TestReturnsTheRepositoryValue(self) -> None:
         repository = AsyncMock()
@@ -240,3 +257,19 @@ class ListEndpointTests(unittest.TestCase):
         self.assertEqual(
             json.loads(response.body), {"error": "events-unavailable"}
         )
+
+    def TestRejectsARequestWithoutAToken(self) -> None:
+        request = SimpleNamespace(json=None, headers={}, ctx=SimpleNamespace())
+
+        response = asyncio.run(List(request))
+
+        self.assertEqual(response.status, 401)
+        self.assertEqual(json.loads(response.body), {"error": "invalid-token"})
+
+    def TestRegistersTheGuardedHandler(self) -> None:
+        routes = {
+            route.uri: route.handler for route in blueprint._future_routes
+        }
+
+        self.assertIs(routes["/list"], List)
+        self.assertTrue(hasattr(routes["/list"], "__wrapped__"))

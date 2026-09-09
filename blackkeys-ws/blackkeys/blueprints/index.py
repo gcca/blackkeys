@@ -2,6 +2,7 @@ import sanic
 import sanic.response
 
 from blackkeys.core.conf import settings
+from blackkeys.monitor import InitMonitor, NotifyServerStarted
 from blackkeys.persistence.schema import ValidateSchema
 from blackkeys.persistence.turso import (
     CloseDatabase,
@@ -10,6 +11,12 @@ from blackkeys.persistence.turso import (
 )
 
 blueprint = sanic.Blueprint("index")
+
+
+@blueprint.before_server_start
+async def StartMonitor(_: sanic.Sanic) -> None:
+    InitMonitor(settings)
+    NotifyServerStarted()
 
 
 @blueprint.before_server_start

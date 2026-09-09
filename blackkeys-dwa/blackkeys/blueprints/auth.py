@@ -3,11 +3,11 @@ from collections.abc import Mapping
 import httpx2
 import sanic
 import sanic.response
-from sanic.log import logger
-
 from blackkeys.blueprints.utils import IsHtmx
 from blackkeys.core.conf import settings
 from blackkeys.templating import RenderPage, RenderTemplate
+from blackkeys.themes import ThemeChoices
+from sanic.log import logger
 
 blueprint = sanic.Blueprint("auth")
 
@@ -39,6 +39,42 @@ def ReadCredentials(payload: object) -> tuple[str, str] | None:
     return username, password
 
 
+def ReadSignup(payload: object) -> tuple[str, str, str] | None:
+    credentials = ReadCredentials(payload)
+    if credentials is None or not isinstance(payload, Mapping):
+        return None
+    email = payload.get("email")
+    if not isinstance(email, str) or not email:
+        return None
+    username, password = credentials
+    return username, password, email
+
+
+def ReadFormValue(payload: object, name: str) -> str:
+    if not isinstance(payload, Mapping):
+        return ""
+    value = payload.get(name)
+    return value if isinstance(value, str) else ""
+
+
+def RenderAuthPage(template: str, **context: object) -> str:
+    return RenderPage(
+        template,
+        show_theme_picker=True,
+        themes=ThemeChoices(),
+        **context,
+    )
+
+
+def SigninSuccessResponse(request: sanic.Request) -> sanic.HTTPResponse:
+    if IsHtmx(request):
+        return sanic.response.empty(
+            status=200,
+            headers={"HX-Redirect": "/"},
+        )
+    return sanic.response.redirect("/", status=303)
+
+
 def SigninResponse(
     request: sanic.Request,
     *,
@@ -57,10 +93,9 @@ def SigninResponse(
             status=status,
         )
     return sanic.response.html(
-        RenderPage(
+        RenderAuthPage(
             "signin",
             title="Sign in",
-            signin_active=True,
             show_notice=True,
             notice_kind=kind,
             notice_title=title,
@@ -71,36 +106,42 @@ def SigninResponse(
     )
 
 
-def DemoResponse(request: sanic.Request, page: str) -> sanic.HTTPResponse:
-    title = "Demo only"
-    message = (
-        f"The {page} form reached the application, but no account operation "
-        "runs yet."
-    )
+def SignupResponse(
+    request: sanic.Request,
+    *,
+    kind: str,
+    title: str,
+    message: str,
+    status: int,
+    username: str = "",
+    email: str = "",
+) -> sanic.HTTPResponse:
     if IsHtmx(request):
         return sanic.response.html(
             RenderTemplate(
                 "demo_notice",
-                {"kind": "info", "title": title, "message": message},
-            )
+                {"kind": kind, "title": title, "message": message},
+            ),
+            status=status,
         )
     return sanic.response.html(
-        RenderPage(
-            page,
-            title=page.title(),
-            **{f"{page}_active": True},
+        RenderAuthPage(
+            "signup",
+            title="Sign up",
             show_notice=True,
+            notice_kind=kind,
             notice_title=title,
             notice_message=message,
-        )
+            username=username,
+            email=email,
+        ),
+        status=status,
     )
 
 
 @blueprint.get("/signin/")
 async def SigninPage(_: sanic.Request) -> sanic.HTTPResponse:
-    return sanic.response.html(
-        RenderPage("signin", title="Sign in", signin_active=True)
-    )
+    return sanic.response.html(RenderAuthPage("signin", title="Sign in"))
 
 
 @blueprint.post("/signin/")
@@ -118,7 +159,7 @@ async def Signin(request: sanic.Request) -> sanic.HTTPResponse:
 
     try:
         response = await request.app.ctx.api_client.post(
-            "/v1/signin/",
+            "/v1/auth/signin",
             json={"username": username, "password": password},
         )
     except httpx2.RequestError as error:
@@ -142,17 +183,7 @@ async def Signin(request: sanic.Request) -> sanic.HTTPResponse:
             and isinstance(payload.get("token"), str)
             and payload["token"]
         ):
-            return SigninResponse(
-                request,
-                kind="success",
-                title="Credentials accepted",
-                message=(
-                    "Blackkeys accepted your sign-in. Browser session handling "
-                    "will be added next."
-                ),
-                status=200,
-                username=username,
-            )
+            return SigninSuccessResponse(request)
         return SigninResponse(
             request,
             kind="error",
@@ -201,11 +232,107 @@ async def Signin(request: sanic.Request) -> sanic.HTTPResponse:
 
 @blueprint.get("/signup/")
 async def SignupPage(_: sanic.Request) -> sanic.HTTPResponse:
-    return sanic.response.html(
-        RenderPage("signup", title="Sign up", signup_active=True)
-    )
+    return sanic.response.html(RenderAuthPage("signup", title="Sign up"))
 
 
 @blueprint.post("/signup/")
-async def SignupDemo(request: sanic.Request) -> sanic.HTTPResponse:
-    return DemoResponse(request, "signup")
+async def Signup(request: sanic.Request) -> sanic.HTTPResponse:
+    signup = ReadSignup(request.form)
+    if signup is None:
+        return SignupResponse(
+            request,
+            kind="warning",
+            title="Missing account details",
+            message="Enter a username, password, and email address.",
+            status=400,
+            username=ReadFormValue(request.form, "username"),
+            email=ReadFormValue(request.form, "email"),
+        )
+    username, password, email = signup
+
+    try:
+        response = await request.app.ctx.api_client.post(
+            "/v1/auth/signup",
+            json={
+                "username": username,
+                "password": password,
+                "email": email,
+            },
+        )
+    except httpx2.RequestError as error:
+        logger.warning("signup API unavailable: %s", error)
+        return SignupResponse(
+            request,
+            kind="error",
+            title="Sign-up unavailable",
+            message="Blackkeys could not be reached. Try again shortly.",
+            status=503,
+            username=username,
+            email=email,
+        )
+
+    if response.status_code == 202:
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict) and payload.get("status") == "accepted":
+            return SignupResponse(
+                request,
+                kind="success",
+                title="Sign-up accepted",
+                message=(
+                    "Blackkeys accepted your account request. You can sign in "
+                    "once processing completes."
+                ),
+                status=202,
+            )
+        return SignupResponse(
+            request,
+            kind="error",
+            title="Unexpected API response",
+            message="Blackkeys returned an invalid sign-up response.",
+            status=502,
+            username=username,
+            email=email,
+        )
+
+    if response.status_code == 400:
+        return SignupResponse(
+            request,
+            kind="warning",
+            title="Invalid request",
+            message="Check the username, password, and email and try again.",
+            status=400,
+            username=username,
+            email=email,
+        )
+    if response.status_code == 409:
+        return SignupResponse(
+            request,
+            kind="warning",
+            title="Username unavailable",
+            message="That username is already registered.",
+            status=409,
+            username=username,
+            email=email,
+        )
+    if response.status_code == 503:
+        return SignupResponse(
+            request,
+            kind="error",
+            title="Sign-up unavailable",
+            message="Blackkeys account creation is temporarily unavailable.",
+            status=503,
+            username=username,
+            email=email,
+        )
+    return SignupResponse(
+        request,
+        kind="error",
+        title="Unexpected API response",
+        message="Blackkeys could not complete the sign-up request.",
+        status=502,
+        username=username,
+        email=email,
+    )

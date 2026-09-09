@@ -7,8 +7,6 @@ from dataclasses import dataclass
 import flatbuffers
 import flatbuffers.util
 import pylibmc
-from argon2 import PasswordHasher, Type
-from argon2.exceptions import InvalidHashError, VerificationError
 
 from blackkeys.schemas.UserAuth import (
     UserAuth,
@@ -23,7 +21,6 @@ AUTH_CACHE_POOL_SIZE = 4
 USER_AUTH_IDENTIFIER = b"BKUA"
 EVENTS_LIST_CACHE_KEY = "blackkeys-events-list"
 EVENTS_CACHE_POOL_SIZE = 4
-password_hasher: PasswordHasher = PasswordHasher(type=Type.ID)
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,15 +82,6 @@ def DecodeUserAuth(
     return CachedUserAuth(username, password)
 
 
-def VerifyPassword(password: str, encoded: str) -> bool:
-    if not encoded.startswith("$argon2id$"):
-        return False
-    try:
-        return password_hasher.verify(encoded, password)
-    except (InvalidHashError, VerificationError):
-        return False
-
-
 def MakeAuthCache(
     nodes: tuple[str, ...], pool_size: int = AUTH_CACHE_POOL_SIZE
 ) -> pylibmc.ClientPool | None:
@@ -123,15 +111,14 @@ def ReadUserAuth(
     return DecodeUserAuth(value)
 
 
-def Authenticate(
-    cache: pylibmc.ClientPool, username: str, password: str
-) -> CachedUserAuth | None:
-    user_auth = ReadUserAuth(cache, username)
-    if user_auth is None or user_auth.username != username:
-        return None
-    if not VerifyPassword(password, user_auth.password):
-        return None
-    return user_auth
+def WriteUserAuth(cache: pylibmc.ClientPool, user_auth: CachedUserAuth) -> bool:
+    with cache.reserve(block=True) as client:
+        return bool(
+            client.set(
+                UserAuthKey(user_auth.username),
+                EncodeUserAuth(user_auth.username, user_auth.password),
+            )
+        )
 
 
 def MakeEventsCache(
