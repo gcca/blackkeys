@@ -3,13 +3,12 @@ import unittest
 from types import SimpleNamespace
 
 import httpx2
-
 from blackkeys.blueprints.auth import (
     CloseApiClient,
     OpenApiClient,
     Signin,
     SigninPage,
-    SignupDemo,
+    Signup,
     SignupPage,
 )
 from blackkeys.blueprints.index import DemoPulse, Healthcheck, Home
@@ -78,7 +77,13 @@ class RouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(response.content_type.startswith("text/html"))
         self.assertIn("htmx.org@4.0.0", body)
         self.assertIn("daisyui@5/themes.css", body)
-        self.assertEqual(body.count("<option value="), 35)
+        self.assertIn('<p class="text-base font-medium">Home</p>', body)
+        self.assertIn("min-h-svh", body)
+        self.assertNotIn("theme-select", body)
+        self.assertNotIn("<header", body)
+        self.assertNotIn("<footer", body)
+        self.assertNotIn("/signin/", body)
+        self.assertNotIn("Live demo", body)
 
     async def TestApiClientLifecycle(self) -> None:
         app = SimpleNamespace(ctx=SimpleNamespace())
@@ -91,15 +96,28 @@ class RouteTests(unittest.IsolatedAsyncioTestCase):
 
     async def TestSigninPage(self) -> None:
         response = await SigninPage(None)
-        self.assertIn('hx-post="/signin/"', response.body.decode())
+        body = response.body.decode()
+        self.assertIn('hx-post="/signin/"', body)
+        self.assertIn('id="theme-select"', body)
+        self.assertIn("min-h-svh", body)
+        self.assertEqual(body.count("<option value="), 35)
 
     async def TestSignupPage(self) -> None:
         response = await SignupPage(None)
-        self.assertIn('hx-post="/signup/"', response.body.decode())
+        body = response.body.decode()
+        self.assertIn('hx-post="/signup/"', body)
+        self.assertIn('name="username"', body)
+        self.assertIn('name="password"', body)
+        self.assertIn('name="email"', body)
+        self.assertIn('type="email"', body)
+        self.assertIn('autocomplete="email" required', body)
+        self.assertIn('id="theme-select"', body)
+        self.assertIn("min-h-svh", body)
+        self.assertEqual(body.count("<option value="), 35)
 
     async def TestSigninCallsApi(self) -> None:
         def ApiResponse(request):
-            self.assertEqual(request.url.path, "/v1/signin/")
+            self.assertEqual(request.url.path, "/v1/auth/signin")
             self.assertEqual(
                 json.loads(request.content),
                 {"username": "demo", "password": "example123"},
@@ -118,9 +136,29 @@ class RouteTests(unittest.IsolatedAsyncioTestCase):
             )
         body = response.body.decode()
         self.assertEqual(response.status, 200)
-        self.assertIn("Credentials accepted", body)
+        self.assertEqual(response.headers["HX-Redirect"], "/")
+        self.assertEqual(body, "")
         self.assertNotIn("signed-token", body)
-        self.assertNotIn("<!doctype html>", body)
+
+    async def TestSigninRedirectsWithoutHtmx(self) -> None:
+        def ApiResponse(_):
+            return httpx2.Response(200, json={"token": "signed-token"})
+
+        async with httpx2.AsyncClient(
+            base_url="http://api.test",
+            transport=httpx2.MockTransport(ApiResponse),
+        ) as client:
+            response = await Signin(
+                self.Request(
+                    client,
+                    {"username": "demo", "password": "example123"},
+                    htmx=False,
+                )
+            )
+        body = response.body.decode()
+        self.assertEqual(response.status, 303)
+        self.assertEqual(response.headers["location"], "/")
+        self.assertNotIn("signed-token", body)
 
     async def TestSigninRejectsInvalidCredentials(self) -> None:
         def ApiResponse(_):
@@ -166,12 +204,169 @@ class RouteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn("Missing credentials", response.body.decode())
 
-    async def TestSignupFallbackDemo(self) -> None:
-        request = SimpleNamespace(headers={})
-        response = await SignupDemo(request)
+    async def TestSignupCallsApi(self) -> None:
+        def ApiResponse(request):
+            self.assertEqual(request.url.path, "/v1/auth/signup")
+            self.assertEqual(
+                json.loads(request.content),
+                {
+                    "username": "demo",
+                    "password": "example123",
+                    "email": "demo@example.com",
+                },
+            )
+            return httpx2.Response(202, json={"status": "accepted"})
+
+        async with httpx2.AsyncClient(
+            base_url="http://api.test",
+            transport=httpx2.MockTransport(ApiResponse),
+        ) as client:
+            response = await Signup(
+                self.Request(
+                    client,
+                    {
+                        "username": "demo",
+                        "password": "example123",
+                        "email": "demo@example.com",
+                    },
+                )
+            )
         body = response.body.decode()
-        self.assertIn("Demo only", body)
+        self.assertEqual(response.status, 202)
+        self.assertIn("Sign-up accepted", body)
+        self.assertNotIn("<!doctype html>", body)
+
+    async def TestSignupValidatesFormBeforeApiCall(self) -> None:
+        for form in (
+            {},
+            {"username": "demo", "password": "example123"},
+            {
+                "username": "demo",
+                "password": "",
+                "email": "demo@example.com",
+            },
+            {
+                "username": "demo",
+                "password": "example123",
+                "email": "",
+            },
+        ):
+            response = await Signup(self.Request(None, form))
+            self.assertEqual(response.status, 400)
+            self.assertIn("Missing account details", response.body.decode())
+
+    async def TestSignupReportsAnExistingUsername(self) -> None:
+        def ApiResponse(_):
+            return httpx2.Response(409, json={"error": "signup-conflict"})
+
+        async with httpx2.AsyncClient(
+            base_url="http://api.test",
+            transport=httpx2.MockTransport(ApiResponse),
+        ) as client:
+            response = await Signup(
+                self.Request(
+                    client,
+                    {
+                        "username": "demo",
+                        "password": "example123",
+                        "email": "demo@example.com",
+                    },
+                )
+            )
+        self.assertEqual(response.status, 409)
+        self.assertIn("Username unavailable", response.body.decode())
+
+    async def TestSignupValidationFallbackPreservesSafeFields(self) -> None:
+        response = await Signup(
+            self.Request(
+                None,
+                {
+                    "username": "demo",
+                    "email": "demo@example.com",
+                },
+                htmx=False,
+            )
+        )
+        body = response.body.decode()
+        self.assertEqual(response.status, 400)
+        self.assertIn('value="demo"', body)
+        self.assertIn('value="demo@example.com"', body)
+        self.assertNotIn('name="password" value=', body)
+
+    async def TestSignupHandlesUnavailableApi(self) -> None:
+        def ApiResponse(request):
+            raise httpx2.ConnectError("connection failed", request=request)
+
+        async with httpx2.AsyncClient(
+            base_url="http://api.test",
+            transport=httpx2.MockTransport(ApiResponse),
+        ) as client:
+            response = await Signup(
+                self.Request(
+                    client,
+                    {
+                        "username": "demo",
+                        "password": "example123",
+                        "email": "demo@example.com",
+                    },
+                    htmx=False,
+                )
+            )
+        body = response.body.decode()
+        self.assertEqual(response.status, 503)
+        self.assertIn("Sign-up unavailable", body)
         self.assertIn("<!doctype html>", body)
+        self.assertIn('value="demo"', body)
+        self.assertIn('value="demo@example.com"', body)
+        self.assertNotIn("example123", body)
+
+    async def TestSignupRejectsInvalidSuccessResponse(self) -> None:
+        def ApiResponse(_):
+            return httpx2.Response(202, content=b"not-json")
+
+        async with httpx2.AsyncClient(
+            base_url="http://api.test",
+            transport=httpx2.MockTransport(ApiResponse),
+        ) as client:
+            response = await Signup(
+                self.Request(
+                    client,
+                    {
+                        "username": "demo",
+                        "password": "example123",
+                        "email": "demo@example.com",
+                    },
+                )
+            )
+        self.assertEqual(response.status, 502)
+        self.assertIn("Unexpected API response", response.body.decode())
+
+    async def TestSignupMapsApiErrors(self) -> None:
+        for api_status, expected_status, title in (
+            (400, 400, "Invalid request"),
+            (503, 503, "Sign-up unavailable"),
+            (418, 502, "Unexpected API response"),
+        ):
+
+            def ApiResponse(_, status=api_status):
+                return httpx2.Response(status)
+
+            async with httpx2.AsyncClient(
+                base_url="http://api.test",
+                transport=httpx2.MockTransport(ApiResponse),
+            ) as client:
+                response = await Signup(
+                    self.Request(
+                        client,
+                        {
+                            "username": "demo",
+                            "password": "example123",
+                            "email": "demo@example.com",
+                        },
+                    )
+                )
+            self.assertEqual(response.status, expected_status)
+            self.assertIn(title, response.body.decode())
 
     async def TestDemoPulse(self) -> None:
         response = await DemoPulse(None)

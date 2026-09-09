@@ -1,45 +1,44 @@
-<div class="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-md items-center px-4 py-8 sm:py-12">
-  <section class="card w-full border border-base-300 bg-base-100 shadow-xl">
-    <div class="card-body gap-5 p-5 sm:p-8">
-      <div>
-        <div class="badge badge-primary badge-outline mb-3">Welcome back</div>
-        <h1 class="text-3xl font-bold">Sign in</h1>
-        <p class="mt-2 text-sm leading-6 opacity-70">Use your Blackkeys credentials to continue.</p>
-      </div>
-
-      {{#show_notice}}
-      <div class="alert alert-{{notice_kind}}" role="status">
-        <div>
-          <div class="font-semibold">{{notice_title}}</div>
-          <div class="text-sm">{{notice_message}}</div>
-        </div>
-      </div>
-      {{/show_notice}}
-
-      <form
-        method="post"
-        action="/signin/"
-        hx-post="/signin/"
-        hx-target="#auth-result"
-        hx-swap="innerHTML"
-        hx-disabled-elt="find button"
-        class="space-y-4"
-      >
-        <label class="form-control w-full">
-          <span class="label-text mb-2 font-medium">Username</span>
-          <input class="input input-bordered min-h-12 w-full" name="username" value="{{username}}" autocomplete="username" autocapitalize="none" required />
-        </label>
-        <label class="form-control w-full">
-          <span class="label-text mb-2 font-medium">Password</span>
-          <input class="input input-bordered min-h-12 w-full" name="password" type="password" autocomplete="current-password" required />
-        </label>
-        <button class="btn btn-primary min-h-12 w-full" type="submit">
-          <span class="htmx-indicator loading loading-spinner loading-sm" aria-hidden="true"></span>
-          Sign in
-        </button>
-      </form>
-      <div id="auth-result" aria-live="polite"></div>
-      <p class="text-center text-sm opacity-70">New here? <a class="link link-primary" href="/signup/">Create an account</a></p>
+<div class="mx-auto flex min-h-svh w-full max-w-md items-center px-5 py-24 sm:px-6 lg:py-12">
+  <section class="w-full sm:rounded-[2rem] sm:border sm:border-base-300 sm:bg-base-100 sm:p-8 sm:shadow-xl lg:p-10">
+    <div class="mb-8">
+      <div class="mb-6 flex size-14 items-center justify-center rounded-2xl bg-primary text-xl font-black text-primary-content shadow-lg shadow-primary/20">B</div>
+      <p class="text-xs font-bold uppercase tracking-[0.24em] text-primary">Blackkeys</p>
+      <h1 class="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Welcome back</h1>
+      <p class="mt-3 text-sm leading-6 opacity-70 sm:text-base">Sign in with your Blackkeys credentials to continue.</p>
     </div>
+
+    {{#show_notice}}
+    <div class="alert alert-{{notice_kind}} mb-6 rounded-2xl" role="status">
+      <div>
+        <div class="font-semibold">{{notice_title}}</div>
+        <div class="text-sm">{{notice_message}}</div>
+      </div>
+    </div>
+    {{/show_notice}}
+
+    <form
+      method="post"
+      action="/signin/"
+      hx-post="/signin/"
+      hx-target="#auth-result"
+      hx-swap="innerHTML"
+      hx-disabled-elt="find button"
+      class="space-y-5"
+    >
+      <label class="form-control w-full">
+        <span class="label-text mb-2 font-semibold">Username</span>
+        <input class="input input-bordered min-h-12 w-full rounded-2xl bg-base-100 px-4 text-base" name="username" value="{{username}}" autocomplete="username" autocapitalize="none" required />
+      </label>
+      <label class="form-control w-full">
+        <span class="label-text mb-2 font-semibold">Password</span>
+        <input class="input input-bordered min-h-12 w-full rounded-2xl bg-base-100 px-4 text-base" name="password" type="password" autocomplete="current-password" required />
+      </label>
+      <button class="btn btn-primary min-h-12 w-full rounded-2xl text-base" type="submit">
+        <span class="htmx-indicator loading loading-spinner loading-sm" aria-hidden="true"></span>
+        Sign in
+      </button>
+    </form>
+    <div id="auth-result" aria-live="polite"></div>
+    <p class="mt-8 text-center text-sm opacity-70">New here? <a class="link link-primary font-semibold" href="/signup/">Create an account</a></p>
   </section>
 </div>

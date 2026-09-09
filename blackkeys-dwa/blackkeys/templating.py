@@ -29,8 +29,7 @@ def RenderPage(template: str, **context: Any) -> str:
         "default_theme": "dim",
         "title": context["title"],
         "content": page,
-        "home_active": context.get("home_active", False),
-        "signin_active": context.get("signin_active", False),
-        "signup_active": context.get("signup_active", False),
+        "show_theme_picker": context.get("show_theme_picker", False),
+        "themes": context.get("themes", ()),
     }
     return RenderTemplate("shell", shell_context)

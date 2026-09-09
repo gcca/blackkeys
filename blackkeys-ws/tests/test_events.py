@@ -154,11 +154,15 @@ class EventsServiceTests(unittest.TestCase):
     def TestReturnsNoneWhenTheRequestFails(self) -> None:
         service = EventsService("http://assets")
 
-        with patch(
-            "blackkeys.backends.services.events.httpx2.AsyncClient",
-            FakeAsyncClientFactory(error=httpx2.ConnectError("down")),
+        with (
+            patch(
+                "blackkeys.backends.services.events.httpx2.AsyncClient",
+                FakeAsyncClientFactory(error=httpx2.ConnectError("down")),
+            ),
+            patch("blackkeys.backends.services.events.logger") as logger,
         ):
             self.assertIsNone(asyncio.run(service.List()))
+        logger.warning.assert_called_once()
 
 
 class EventsRepositoryTests(unittest.TestCase):
@@ -181,6 +185,18 @@ class EventsRepositoryTests(unittest.TestCase):
         cache.reserve.assert_not_called()
         publisher.Publish.assert_not_called()
         service.List.assert_not_called()
+
+    def TestIgnoresANonListLocalCacheValue(self) -> None:
+        LocalCacheSet(EVENTS_LIST_CACHE_KEY, {"id": 1})
+        service = AsyncMock()
+        service.List.return_value = [{"id": 2}]
+        repository = EventsRepository(None, None, service)
+
+        value = asyncio.run(repository.List())
+
+        self.assertEqual(value, [{"id": 2}])
+        service.List.assert_awaited_once_with()
+        self.assertEqual(LocalCacheGet(EVENTS_LIST_CACHE_KEY), [{"id": 2}])
 
     def TestReturnsFromMemcachedAndPopulatesLocalCache(self) -> None:
         cache = MagicMock()

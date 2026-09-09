@@ -2,7 +2,9 @@ import asyncio
 import json
 import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
+
+from turso import IntegrityError
 
 from blackkeys.backends.broker import (
     BrokerError,
@@ -16,7 +18,7 @@ from blackkeys.backends.publishers.signup import (
     SignupPublisher,
 )
 from blackkeys.backends.stores.cache import DecodeUserAuth, EncodeUserAuth
-from blackkeys.blueprints.auth import Signup
+from blackkeys.blueprints.auth import SignUp
 from blackkeys.core.conf import Settings
 from blackkeys.repositories import AuthRepository
 
@@ -54,6 +56,26 @@ class FakePublisher:
         if self.error is not None:
             raise self.error
         self.calls.append((username, password))
+
+
+class FakeDatabase:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+        self.executed: list[tuple[str, object]] = []
+        self.committed = 0
+        self.pushed = 0
+
+    async def execute(self, sql: str, parameters: object = ()) -> None:
+        if self.error is not None:
+            raise self.error
+        self.executed.append((sql, parameters))
+
+    async def commit(self) -> None:
+        self.committed += 1
+
+    async def push(self) -> bool:
+        self.pushed += 1
+        return True
 
 
 def Publisher(channel: FakeChannel) -> SignupPublisher:
@@ -154,31 +176,76 @@ class SignupPublisherTests(unittest.TestCase):
         self.assertIsNone(publisher._channel)
         self.assertTrue(channel.closed)
 
-    def TestUnreachableNodesBecomeABrokerError(self) -> None:
+    @patch(
+        "blackkeys.backends.publishers.signup.aio_pika.connect_robust",
+        new_callable=AsyncMock,
+    )
+    def TestUnreachableNodesBecomeABrokerError(
+        self, connect: AsyncMock
+    ) -> None:
+        connect.side_effect = ConnectionError("connection refused")
         publisher = MakeSignupPublisher(
-            ("127.0.0.1:1",), "blackkeys", "blackkeys", "/", "blackkeys-signup"
+            ("rabbit-a:5672",),
+            "blackkeys",
+            "blackkeys",
+            "/",
+            "blackkeys-signup",
         )
         assert publisher is not None
 
         with self.assertRaises(BrokerError):
             asyncio.run(publisher.Publish("alice", "correct-password"))
+        connect.assert_awaited_once()
+
+
+class AuthRepositoryLifecycleTests(unittest.TestCase):
+    def TestOpenStoresTheDatabase(self) -> None:
+        db = FakeDatabase()
+        repository = AuthRepository(None, None)
+
+        asyncio.run(repository.Open(db))
+
+        self.assertIs(repository._db.db, db)
+
+        asyncio.run(repository.Close())
+
+        self.assertIsNone(repository._db.db)
 
 
 class SignupEndpointTests(unittest.TestCase):
     request = SimpleNamespace(
-        json={"username": "alice", "password": "correct-password"}
+        json={
+            "username": "alice",
+            "password": "correct-password",
+            "email": "alice@example.com",
+        }
+    )
+    insert_sql = (
+        'INSERT INTO "user" (username, password, email) VALUES (?, ?, ?)'
     )
 
-    def TestSignupQueuesTheCredentials(self) -> None:
+    def TestSignupInsertsAndQueuesTheCredentials(self) -> None:
         publisher = FakePublisher()
-        repository = AuthRepository(None, publisher)
+        db = FakeDatabase()
+        repository = AuthRepository(None, publisher, db)
 
         with patch("blackkeys.blueprints.auth.auth_repository", repository):
-            response = asyncio.run(Signup(self.request))
+            response = asyncio.run(SignUp(self.request))
 
         self.assertEqual(response.status, 202)
         self.assertEqual(json.loads(response.body), {"status": "accepted"})
         self.assertEqual(publisher.calls, [("alice", "correct-password")])
+        self.assertEqual(
+            db.executed,
+            [
+                (
+                    self.insert_sql,
+                    ("alice", "correct-password", "alice@example.com"),
+                )
+            ],
+        )
+        self.assertEqual(db.committed, 1)
+        self.assertEqual(db.pushed, 1)
 
     def TestSignupRejectsMalformedRequests(self) -> None:
         for payload in (
@@ -188,12 +255,26 @@ class SignupEndpointTests(unittest.TestCase):
             {"username": "", "password": "correct-password"},
             {"username": "ali ce", "password": "correct-password"},
             {"username": "alice", "password": 1},
+            {
+                "username": "alice",
+                "password": "correct-password",
+            },
+            {
+                "username": "alice",
+                "password": "correct-password",
+                "email": "",
+            },
+            {
+                "username": "alice",
+                "password": "correct-password",
+                "email": 1,
+            },
         ):
             request = SimpleNamespace(json=payload)
-            repository = AuthRepository(None, FakePublisher())
+            repository = AuthRepository(None, FakePublisher(), FakeDatabase())
 
             with patch("blackkeys.blueprints.auth.auth_repository", repository):
-                response = asyncio.run(Signup(request))
+                response = asyncio.run(SignUp(request))
 
             self.assertEqual(response.status, 400)
             self.assertEqual(
@@ -201,10 +282,21 @@ class SignupEndpointTests(unittest.TestCase):
             )
 
     def TestSignupRequiresMqConfiguration(self) -> None:
-        repository = AuthRepository(None, None)
+        repository = AuthRepository(None, None, FakeDatabase())
 
         with patch("blackkeys.blueprints.auth.auth_repository", repository):
-            response = asyncio.run(Signup(self.request))
+            response = asyncio.run(SignUp(self.request))
+
+        self.assertEqual(response.status, 503)
+        self.assertEqual(
+            json.loads(response.body), {"error": "signup-unavailable"}
+        )
+
+    def TestSignupRequiresADatabase(self) -> None:
+        repository = AuthRepository(None, FakePublisher())
+
+        with patch("blackkeys.blueprints.auth.auth_repository", repository):
+            response = asyncio.run(SignUp(self.request))
 
         self.assertEqual(response.status, 503)
         self.assertEqual(
@@ -213,14 +305,50 @@ class SignupEndpointTests(unittest.TestCase):
 
     def TestSignupReportsAnUnavailableBroker(self) -> None:
         publisher = FakePublisher(BrokerError("no reachable mq node"))
-        repository = AuthRepository(None, publisher)
+        repository = AuthRepository(None, publisher, FakeDatabase())
 
-        with patch("blackkeys.blueprints.auth.auth_repository", repository):
-            response = asyncio.run(Signup(self.request))
+        with (
+            patch("blackkeys.blueprints.auth.auth_repository", repository),
+            patch("blackkeys.repositories.logger") as logger,
+        ):
+            response = asyncio.run(SignUp(self.request))
 
         self.assertEqual(response.status, 503)
         self.assertEqual(
             json.loads(response.body), {"error": "signup-unavailable"}
+        )
+        logger.warning.assert_called_once()
+
+    def TestSignupReportsAnInsertFailure(self) -> None:
+        repository = AuthRepository(
+            None, FakePublisher(), FakeDatabase(RuntimeError("disk full"))
+        )
+
+        with (
+            patch("blackkeys.blueprints.auth.auth_repository", repository),
+            patch("blackkeys.repositories.logger") as logger,
+        ):
+            response = asyncio.run(SignUp(self.request))
+
+        self.assertEqual(response.status, 503)
+        self.assertEqual(
+            json.loads(response.body), {"error": "signup-unavailable"}
+        )
+        logger.warning.assert_called_once()
+
+    def TestSignupReportsADuplicateUsername(self) -> None:
+        repository = AuthRepository(
+            None,
+            FakePublisher(),
+            FakeDatabase(IntegrityError("UNIQUE constraint failed")),
+        )
+
+        with patch("blackkeys.blueprints.auth.auth_repository", repository):
+            response = asyncio.run(SignUp(self.request))
+
+        self.assertEqual(response.status, 409)
+        self.assertEqual(
+            json.loads(response.body), {"error": "signup-conflict"}
         )
 
 
@@ -229,8 +357,8 @@ class MqSettingsTests(unittest.TestCase):
         loaded = Settings.FromEnv({"SECRET": "secret"})
 
         self.assertEqual(loaded.mq_nodes, ())
-        self.assertEqual(loaded.mq_user, "guest")
-        self.assertEqual(loaded.mq_password, "guest")
+        self.assertEqual(loaded.mq_user, "blackkeys")
+        self.assertEqual(loaded.mq_password, "blackkeys")
         self.assertEqual(loaded.mq_vhost, "/")
         self.assertEqual(
             loaded.mq_signup_queue, Settings.MQ_SIGNUP_QUEUE_DEFAULT
