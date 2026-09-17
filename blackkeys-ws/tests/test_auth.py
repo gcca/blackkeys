@@ -126,6 +126,24 @@ class SettingsTests(unittest.TestCase):
 
         self.assertEqual(loaded.sentry_dsn, "https://key@sentry.io/1")
 
+    def TestDefaultsTheAssetsGrpcTarget(self) -> None:
+        loaded = Settings.FromEnv({"SECRET": "secret"})
+
+        self.assertEqual(
+            loaded.assets_grpc_target, Settings.ASSETS_GRPC_TARGET_DEFAULT
+        )
+
+    def TestLoadsTheAssetsGrpcTargetFromEnvironment(self) -> None:
+        loaded = Settings.FromEnv(
+            {"SECRET": "secret", "ASSETS_GRPC_TARGET": "127.0.0.1:50555"}
+        )
+
+        self.assertEqual(loaded.assets_grpc_target, "127.0.0.1:50555")
+
+    def TestRejectsAnEmptyAssetsGrpcTarget(self) -> None:
+        with self.assertRaises(ValueError):
+            Settings.FromEnv({"SECRET": "secret", "ASSETS_GRPC_TARGET": ""})
+
 
 class CachedUserAuthTests(unittest.TestCase):
     password = PasswordHasher(type=Type.ID).hash("correct-password")

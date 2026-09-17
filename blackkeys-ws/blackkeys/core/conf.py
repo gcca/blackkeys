@@ -17,6 +17,7 @@ class Settings:
     MQ_SIGNUP_QUEUE_DEFAULT: ClassVar[str] = "blackkeys-signup"
     MQ_HYDRATION_QUEUE_DEFAULT: ClassVar[str] = "blackkeys-hydration"
     TURSO_LOCAL_PATH_DEFAULT: ClassVar[str] = "blackkeys.db"
+    ASSETS_GRPC_TARGET_DEFAULT: ClassVar[str] = "127.0.0.1:50051"
 
     secret: str
     auth_ttl_seconds: int
@@ -28,6 +29,7 @@ class Settings:
     mq_signup_queue: str = MQ_SIGNUP_QUEUE_DEFAULT
     mq_hydration_queue: str = MQ_HYDRATION_QUEUE_DEFAULT
     assets_host: str | None = None
+    assets_grpc_target: str = ASSETS_GRPC_TARGET_DEFAULT
     turso_database_url: str | None = None
     turso_auth_token: str | None = None
     turso_local_path: str = TURSO_LOCAL_PATH_DEFAULT
@@ -47,6 +49,7 @@ class Settings:
             mq_signup_queue=_ReadMqSignupQueue(values),
             mq_hydration_queue=_ReadMqHydrationQueue(values),
             assets_host=_ReadAssetsHost(values),
+            assets_grpc_target=_ReadAssetsGrpcTarget(values),
             turso_database_url=_ReadTursoDatabaseUrl(values),
             turso_auth_token=_ReadTursoAuthToken(values),
             turso_local_path=_ReadTursoLocalPath(values),
@@ -127,6 +130,15 @@ def _ReadMqHydrationQueue(values: Mapping[str, str]) -> str:
 
 def _ReadAssetsHost(values: Mapping[str, str]) -> str | None:
     return values.get("ASSETS_HOST") or None
+
+
+def _ReadAssetsGrpcTarget(values: Mapping[str, str]) -> str:
+    assets_grpc_target = values.get(
+        "ASSETS_GRPC_TARGET", Settings.ASSETS_GRPC_TARGET_DEFAULT
+    )
+    if not assets_grpc_target:
+        raise ValueError("ASSETS_GRPC_TARGET must not be empty")
+    return assets_grpc_target
 
 
 def _ReadTursoDatabaseUrl(values: Mapping[str, str]) -> str | None:

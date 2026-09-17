@@ -20,6 +20,10 @@ from blackkeys.backends.services.events import (
     EventsService,
     MakeEventsService,
 )
+from blackkeys.backends.services.stores import (
+    MakeStoresService,
+    StoresService,
+)
 from blackkeys.backends.stores import cache as cache_store
 from blackkeys.backends.stores.db import (
     DbStore,
@@ -221,6 +225,26 @@ class EventsRepository:
         return value
 
 
+class StoresRepository:
+    __slots__ = ("_service",)
+
+    def __init__(self, service: StoresService | None) -> None:
+        self._service = service
+
+    async def Open(self) -> None:
+        if self._service is not None:
+            await self._service.Open()
+
+    async def Close(self) -> None:
+        if self._service is not None:
+            await self._service.Close()
+
+    async def List(self) -> list | None:
+        if self._service is None:
+            return None
+        return await self._service.List()
+
+
 def MakeEventsRepository(settings: Settings) -> EventsRepository:
     return EventsRepository(
         cache_store.MakeEventsCache(settings.cache_nodes),
@@ -233,6 +257,10 @@ def MakeEventsRepository(settings: Settings) -> EventsRepository:
         ),
         MakeEventsService(settings.assets_host),
     )
+
+
+def MakeStoresRepository(settings: Settings) -> StoresRepository:
+    return StoresRepository(MakeStoresService(settings.assets_grpc_target))
 
 
 def MakeAuthRepository(settings: Settings) -> AuthRepository:

@@ -1,11 +1,22 @@
 flatc = flatc
+python = pdm run python
+assets_protos = ../blackkeys-assets/protos
 
 rule flatc_py
   command = $flatc --python -o . $in
   description = flatc --python $in
 
+rule protoc_py
+  command = $python -m grpc_tools.protoc -I $assets_protos --python_out=blackkeys/gen --grpc_python_out=blackkeys/gen $in && $python scripts/rewrite_pb2_imports.py
+  description = PROTOC --python_out $in
+  restat = 1
+
 build blackkeys/schemas/HydrationMessage.py blackkeys/schemas/UserAuth.py blackkeys/schemas/UserSignup.py blackkeys/schemas/__init__.py: flatc_py schemas/hydrant.fbs schemas/auth.fbs
 
+build blackkeys/gen/v1/messages_pb2.py blackkeys/gen/v1/messages_pb2_grpc.py blackkeys/gen/v1/service_pb2.py blackkeys/gen/v1/service_pb2_grpc.py: protoc_py $assets_protos/v1/messages.proto $assets_protos/v1/service.proto
+
 build schemas: phony blackkeys/schemas/HydrationMessage.py blackkeys/schemas/UserAuth.py blackkeys/schemas/UserSignup.py blackkeys/schemas/__init__.py
+
+build protos: phony blackkeys/gen/v1/messages_pb2.py blackkeys/gen/v1/messages_pb2_grpc.py blackkeys/gen/v1/service_pb2.py blackkeys/gen/v1/service_pb2_grpc.py
 
 default schemas
