@@ -166,6 +166,20 @@ services:
     restart: unless-stopped
 
   # --- apps -------------------------------------------------------------------
+  blackkeys-assets:
+    build:
+      context: ../blackkeys-assets
+      dockerfile: Dockerfile
+    image: blackkeys-assets:local
+    profiles: [apps]
+    environment:
+      TZ: UTC
+      GRPC_ADDRESS: 0.0.0.0
+      GRPC_PORT: 50051
+    ports:
+      - "50051:50051"
+    restart: unless-stopped
+
   blackkeys-ws:
     build:
       context: ../blackkeys-ws
@@ -179,14 +193,19 @@ services:
       MQ_NODES: rabbitmq1:5672,rabbitmq2:5672,rabbitmq3:5672
       MQ_USER: blackkeys
       MQ_PASSWORD: blackkeys
+      ASSETS_GRPC_TARGET: blackkeys-assets:50051
+      TURSO_LOCAL_PATH: /data/blackkeys.db
     ports:
       - "8000:8000"
+    volumes:
+      - blackkeys-ws:/data
     depends_on:
       - memcached1
       - memcached2
       - rabbitmq1
       - rabbitmq2
       - rabbitmq3
+      - blackkeys-assets
     restart: unless-stopped
 
   blackkeys-hydrant:
@@ -285,6 +304,7 @@ configs:
 
 # --- volumes ------------------------------------------------------------------
 volumes:
+  blackkeys-ws:
   grafana:
   prometheus:
   rabbitmq1:

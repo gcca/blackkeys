@@ -124,6 +124,25 @@ class StoresServiceTests(unittest.TestCase):
         with patch("blackkeys.backends.services.stores.logger"):
             self.assertIsNone(asyncio.run(service.List()))
 
+    def TestNotifiesSentryWithDetailsWhenTheRpcFails(self) -> None:
+        service = StoresService("127.0.0.1:9")
+        stub = AsyncMock()
+        stub.List.side_effect = grpc.aio.AioRpcError(
+            grpc.StatusCode.UNAVAILABLE, details="unavailable"
+        )
+        service._stub = stub
+
+        with patch("blackkeys.backends.services.stores.logger"), patch(
+            "blackkeys.backends.services.stores.NotifyEvent"
+        ) as notify:
+            asyncio.run(service.List())
+
+        notify.assert_called_once_with(
+            "stores list request failed: target=127.0.0.1:9 "
+            "code=StatusCode.UNAVAILABLE details=unavailable",
+            level="error",
+        )
+
     def TestMakeStoresServiceReturnsNoneWhenTheTargetIsMissing(self) -> None:
         self.assertIsNone(MakeStoresService(None))
         self.assertIsNone(MakeStoresService(""))

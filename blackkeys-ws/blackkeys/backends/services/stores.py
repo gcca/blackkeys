@@ -5,6 +5,7 @@ from google.protobuf.json_format import MessageToDict
 from sanic.log import logger
 
 from blackkeys.gen.v1 import messages_pb2, service_pb2_grpc
+from blackkeys.monitor import NotifyEvent
 
 ASSETS_TIMEOUT_SECONDS = 5.0
 
@@ -53,6 +54,11 @@ class StoresService:
             )
         except grpc.aio.AioRpcError as error:
             logger.warning("assets stores request failed: %s", error)
+            NotifyEvent(
+                f"stores list request failed: target={self._target} "
+                f"code={error.code()} details={error.details()}",
+                level="error",
+            )
             return None
         return StoresFromResponse(response)
 
