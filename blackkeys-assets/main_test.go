@@ -6,7 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/plaza-san-miguel/blackkeys/blackkeys-assets/blackkeys/handling"
 	assetsv1 "github.com/plaza-san-miguel/blackkeys/blackkeys-assets/gen/assetsv1"
+	"github.com/plaza-san-miguel/blackkeys/blackkeys-assets/samples"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -22,7 +24,9 @@ func serveOnEphemeral(t *testing.T) *grpc.ClientConn {
 		t.Fatalf("listen: %v", err)
 	}
 
-	server, err := newServer()
+	server, err := newServer(context.Background(), func(context.Context) (*handling.StoresService, error) {
+		return handling.NewStoresServiceFromSnapshot(samples.StoresParquet)
+	})
 	if err != nil {
 		t.Fatalf("newServer: %v", err)
 	}

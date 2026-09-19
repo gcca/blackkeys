@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 	"os"
@@ -24,8 +25,8 @@ func listenAddr() string {
 	return net.JoinHostPort(host, port)
 }
 
-func newServer() (*grpc.Server, error) {
-	service, err := handling.NewStoresService()
+func newServer(ctx context.Context, newStoresService func(context.Context) (*handling.StoresService, error)) (*grpc.Server, error) {
+	service, err := newStoresService(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +43,7 @@ func newServer() (*grpc.Server, error) {
 }
 
 func main() {
-	server, err := newServer()
+	server, err := newServer(context.Background(), handling.NewStoresService)
 	if err != nil {
 		log.Fatal(err)
 	}

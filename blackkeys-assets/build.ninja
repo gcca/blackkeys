@@ -32,7 +32,7 @@ rule go_vet
   pool = console
 
 rule gofmt_check
-  command = unformatted=$$($gofmt -l main.go main_test.go blackkeys) && test -z "$$unformatted" || { echo "$$unformatted"; exit 1; }
+  command = unformatted=$$($gofmt -l main.go main_test.go blackkeys samples) && test -z "$$unformatted" || { echo "$$unformatted"; exit 1; }
   description = GOFMT -l
   pool = console
 
@@ -46,15 +46,15 @@ build gen/assetsv1/messages.pb.go gen/assetsv1/service.pb.go gen/assetsv1/servic
 
 build protos: phony gen/assetsv1/messages.pb.go gen/assetsv1/service.pb.go gen/assetsv1/service_grpc.pb.go
 
-build bin/blackkeys-assets: go_build main.go blackkeys/handling/stores.go blackkeys/handling/stores.json go.mod go.sum | protos
+build bin/blackkeys-assets: go_build main.go blackkeys/core/conf.go blackkeys/core/ring.go blackkeys/cache.go blackkeys/storage/stores.go blackkeys/handling/stores.go go.mod go.sum | protos
 
 build build: phony bin/blackkeys-assets
 
-build test: go_test main.go main_test.go blackkeys/handling/stores.go blackkeys/handling/stores_test.go blackkeys/handling/stores.json go.mod go.sum | protos
+build test: go_test main.go main_test.go blackkeys/core/conf.go blackkeys/core/conf_test.go blackkeys/core/ring.go blackkeys/core/ring_test.go blackkeys/cache.go blackkeys/cache_test.go blackkeys/storage/stores.go blackkeys/handling/stores.go blackkeys/handling/stores_test.go samples/samples.go samples/stores.parquet go.mod go.sum | protos
 
-build vet: go_vet main.go main_test.go blackkeys/handling/stores.go blackkeys/handling/stores_test.go go.mod go.sum | protos
+build vet: go_vet main.go main_test.go blackkeys/core/conf.go blackkeys/core/conf_test.go blackkeys/core/ring.go blackkeys/core/ring_test.go blackkeys/cache.go blackkeys/cache_test.go blackkeys/storage/stores.go blackkeys/handling/stores.go blackkeys/handling/stores_test.go samples/samples.go go.mod go.sum | protos
 
-build fmt: gofmt_check main.go main_test.go blackkeys/handling/stores.go blackkeys/handling/stores_test.go
+build fmt: gofmt_check main.go main_test.go blackkeys/core/conf.go blackkeys/core/conf_test.go blackkeys/core/ring.go blackkeys/core/ring_test.go blackkeys/cache.go blackkeys/cache_test.go blackkeys/storage/stores.go blackkeys/handling/stores.go blackkeys/handling/stores_test.go samples/samples.go
 
 build all: phony build test vet fmt
 

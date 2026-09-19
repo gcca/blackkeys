@@ -1,13 +1,11 @@
 FROM cgr.dev/chainguard/wolfi-base:latest AS builder
 
-ARG PYTHON_PACKAGE_VERSION=3.13.14-r3
-
 RUN apk add --no-cache \
     build-base \
     libmemcached-dev \
     py3.13-pip \
-    "python-3.13=${PYTHON_PACKAGE_VERSION}" \
-    "python-3.13-dev=${PYTHON_PACKAGE_VERSION}" \
+    python-3.13 \
+    python-3.13-dev \
     zlib-dev
 
 RUN python3.13 -m venv /opt/pdm \
@@ -31,7 +29,10 @@ RUN mkdir /runtime \
         --repositories-file /etc/apk/repositories \
         add --no-cache \
         libmemcached \
-        "python-3.13=${PYTHON_PACKAGE_VERSION}"
+        libstdc++ \
+        python-3.13 \
+    && mkdir -p /runtime/app /runtime/data \
+    && chown 65532:65532 /runtime/app /runtime/data
 
 FROM cgr.dev/chainguard/static:latest
 
@@ -50,5 +51,5 @@ USER 65532:65532
 
 EXPOSE 8000
 
-ENTRYPOINT ["/app/.venv/bin/python", "-m", "sanic"]
+ENTRYPOINT ["/app/.venv/bin/python", "-m", "blackkeys.commands.boot"]
 CMD ["ws:app", "--host=0.0.0.0", "--port=8000"]

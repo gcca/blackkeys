@@ -2,7 +2,7 @@ services:
   # --- cache ------------------------------------------------------------------
   memcached1:
     image: memcached:1.6-alpine
-    profiles: [core]
+    profiles: [core, cache]
     command: ["-m", "256", "-I", "10m"]
     environment:
       TZ: UTC
@@ -12,12 +12,22 @@ services:
 
   memcached2:
     image: memcached:1.6-alpine
-    profiles: [core]
+    profiles: [core, cache]
     command: ["-m", "256", "-I", "10m"]
     environment:
       TZ: UTC
     ports:
       - "11212:11211"
+    restart: unless-stopped
+
+  memcached3:
+    image: memcached:1.6-alpine
+    profiles: [core, cache]
+    command: ["-m", "256", "-I", "10m"]
+    environment:
+      TZ: UTC
+    ports:
+      - "11213:11211"
     restart: unless-stopped
 
   # --- broker -----------------------------------------------------------------
@@ -99,6 +109,37 @@ services:
       start_period: 60s
     restart: unless-stopped
 
+  # --- storage ------------------------------------------------------------------
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    profiles: [core]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      TZ: UTC
+      MINIO_ROOT_USER: blackkeys
+      MINIO_ROOT_PASSWORD: blackkeys
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio:/data
+    restart: unless-stopped
+
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    profiles: [core]
+    environment:
+      TZ: UTC
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+        until mc alias set local http://minio:9000 blackkeys blackkeys; do sleep 1; done &&
+        mc mb --ignore-existing local/blackkeys-assets &&
+        mc mb --ignore-existing local/blackkeys-data
+      "
+    restart: "no"
+
   # --- exporters --------------------------------------------------------------
   memcached-exporter1:
     image: prom/memcached-exporter:v0.17.0
@@ -124,6 +165,18 @@ services:
       - memcached2
     restart: unless-stopped
 
+  memcached-exporter3:
+    image: prom/memcached-exporter:v0.17.0
+    profiles: [observability]
+    command: ["--memcached.address=memcached3:11211"]
+    environment:
+      TZ: UTC
+    ports:
+      - "9152:9150"
+    depends_on:
+      - memcached3
+    restart: unless-stopped
+
   # --- observability ----------------------------------------------------------
   prometheus:
     image: prom/prometheus:v3.5.0
@@ -143,6 +196,7 @@ services:
     depends_on:
       - memcached-exporter1
       - memcached-exporter2
+      - memcached-exporter3
       - rabbitmq1
       - rabbitmq2
       - rabbitmq3
@@ -189,7 +243,7 @@ services:
     environment:
       TZ: UTC
       SECRET: blackkeys
-      CACHE_NODES: memcached1:11211,memcached2:11211
+      CACHE_NODES: memcached1:11211,memcached2:11211,memcached3:11211
       MQ_NODES: rabbitmq1:5672,rabbitmq2:5672,rabbitmq3:5672
       MQ_USER: blackkeys
       MQ_PASSWORD: blackkeys
@@ -202,6 +256,7 @@ services:
     depends_on:
       - memcached1
       - memcached2
+      - memcached3
       - rabbitmq1
       - rabbitmq2
       - rabbitmq3
@@ -219,13 +274,14 @@ services:
     profiles: [apps]
     environment:
       TZ: UTC
-      CACHE_NODES: memcached1:11211,memcached2:11211
+      CACHE_NODES: memcached1:11211,memcached2:11211,memcached3:11211
       MQ_NODES: rabbitmq1:5672,rabbitmq2:5672,rabbitmq3:5672
       MQ_USER: blackkeys
       MQ_PASSWORD: blackkeys
     depends_on:
       - memcached1
       - memcached2
+      - memcached3
       - rabbitmq1
       - rabbitmq2
       - rabbitmq3
@@ -257,6 +313,9 @@ configs:
             - targets: ["memcached-exporter2:9150"]
               labels:
                 instance: memcached2
+            - targets: ["memcached-exporter3:9150"]
+              labels:
+                instance: memcached3
 
         - job_name: rabbitmq
           scrape_interval: 15s
@@ -306,6 +365,7 @@ configs:
 volumes:
   blackkeys-ws:
   grafana:
+  minio:
   prometheus:
   rabbitmq1:
   rabbitmq2:

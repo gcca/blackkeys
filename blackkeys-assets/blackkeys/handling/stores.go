@@ -1,53 +1,52 @@
 package handling
 
 import (
+	"bytes"
 	"context"
-	_ "embed"
-	"encoding/json"
 	"fmt"
 
+	"github.com/parquet-go/parquet-go"
+	"github.com/plaza-san-miguel/blackkeys/blackkeys-assets/blackkeys/core"
+	"github.com/plaza-san-miguel/blackkeys/blackkeys-assets/blackkeys/storage"
 	assetsv1 "github.com/plaza-san-miguel/blackkeys/blackkeys-assets/gen/assetsv1"
 )
 
-//go:embed stores.json
-var storesSnapshot []byte
-
 type storeRecord struct {
-	ID          int32                 `json:"id"`
-	Name        string                `json:"name"`
-	DirectoryID int32                 `json:"directoryId"`
-	IsActive    bool                  `json:"isActive"`
-	IsNew       bool                  `json:"isNew"`
-	Logo        string                `json:"logo"`
-	StorePhoto  string                `json:"storePhoto"`
-	Description string                `json:"description"`
-	Phone       string                `json:"phone"`
-	Website     string                `json:"website"`
-	Facebook    string                `json:"facebook"`
-	Instagram   string                `json:"instagram"`
-	Tiktok      string                `json:"tiktok"`
-	Subcategory subcategoryRecord     `json:"subcategory"`
-	Stores      []storeLocationRecord `json:"stores"`
+	ID          int32                 `parquet:"id"`
+	Name        string                `parquet:"name"`
+	DirectoryID int32                 `parquet:"directoryId"`
+	IsActive    bool                  `parquet:"isActive"`
+	IsNew       bool                  `parquet:"isNew"`
+	Logo        string                `parquet:"logo"`
+	StorePhoto  string                `parquet:"storePhoto"`
+	Description string                `parquet:"description"`
+	Phone       string                `parquet:"phone"`
+	Website     string                `parquet:"website"`
+	Facebook    string                `parquet:"facebook"`
+	Instagram   string                `parquet:"instagram"`
+	Tiktok      string                `parquet:"tiktok"`
+	Subcategory subcategoryRecord     `parquet:"subcategory"`
+	Stores      []storeLocationRecord `parquet:"stores"`
 }
 
 type subcategoryRecord struct {
-	ID       int32          `json:"id"`
-	Name     string         `json:"name"`
-	Category categoryRecord `json:"category"`
+	ID       int32          `parquet:"id"`
+	Name     string         `parquet:"name"`
+	Category categoryRecord `parquet:"category"`
 }
 
 type categoryRecord struct {
-	ID   int32  `json:"id"`
-	Name string `json:"name"`
+	ID   int32  `parquet:"id"`
+	Name string `parquet:"name"`
 }
 
 type storeLocationRecord struct {
-	Location locationRecord `json:"location"`
+	Location locationRecord `parquet:"location"`
 }
 
 type locationRecord struct {
-	ID   int32  `json:"id"`
-	Name string `json:"name"`
+	ID   int32  `parquet:"id"`
+	Name string `parquet:"name"`
 }
 
 func (r storeRecord) store() *assetsv1.Store {
@@ -87,9 +86,9 @@ func (r storeRecord) store() *assetsv1.Store {
 	}
 }
 
-func LoadStores() ([]*assetsv1.Store, error) {
-	var records []storeRecord
-	if err := json.Unmarshal(storesSnapshot, &records); err != nil {
+func decodeStores(snapshot []byte) ([]*assetsv1.Store, error) {
+	records, err := parquet.Read[storeRecord](bytes.NewReader(snapshot), int64(len(snapshot)))
+	if err != nil {
 		return nil, fmt.Errorf("stores snapshot: %w", err)
 	}
 
@@ -100,13 +99,35 @@ func LoadStores() ([]*assetsv1.Store, error) {
 	return stores, nil
 }
 
+func LoadStores(ctx context.Context) ([]*assetsv1.Store, error) {
+	settings, err := core.SettingsFromEnv()
+	if err != nil {
+		return nil, fmt.Errorf("settings: %w", err)
+	}
+
+	snapshot, err := storage.FetchStoresSnapshot(ctx, settings)
+	if err != nil {
+		return nil, err
+	}
+
+	return decodeStores(snapshot)
+}
+
 type StoresService struct {
 	assetsv1.UnimplementedStoresServer
 	stores []*assetsv1.Store
 }
 
-func NewStoresService() (*StoresService, error) {
-	stores, err := LoadStores()
+func NewStoresService(ctx context.Context) (*StoresService, error) {
+	stores, err := LoadStores(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &StoresService{stores: stores}, nil
+}
+
+func NewStoresServiceFromSnapshot(snapshot []byte) (*StoresService, error) {
+	stores, err := decodeStores(snapshot)
 	if err != nil {
 		return nil, err
 	}

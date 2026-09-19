@@ -1,11 +1,15 @@
 package handling
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/plaza-san-miguel/blackkeys/blackkeys-assets/samples"
+)
 
 func TestLoadStoresMapsEmbeddedSnapshot(t *testing.T) {
-	stores, err := LoadStores()
+	stores, err := decodeStores(samples.StoresParquet)
 	if err != nil {
-		t.Fatalf("LoadStores: %v", err)
+		t.Fatalf("decodeStores: %v", err)
 	}
 
 	if len(stores) != 318 {
@@ -17,9 +21,9 @@ func TestLoadStoresMapsEmbeddedSnapshot(t *testing.T) {
 }
 
 func TestLoadStoresMapsNestedRecords(t *testing.T) {
-	stores, err := LoadStores()
+	stores, err := decodeStores(samples.StoresParquet)
 	if err != nil {
-		t.Fatalf("LoadStores: %v", err)
+		t.Fatalf("decodeStores: %v", err)
 	}
 
 	first := stores[0]
@@ -41,9 +45,9 @@ func TestLoadStoresMapsNestedRecords(t *testing.T) {
 }
 
 func TestLoadStoresMapsNullStorePhotoToEmptyString(t *testing.T) {
-	stores, err := LoadStores()
+	stores, err := decodeStores(samples.StoresParquet)
 	if err != nil {
-		t.Fatalf("LoadStores: %v", err)
+		t.Fatalf("decodeStores: %v", err)
 	}
 
 	byName := make(map[string]string, len(stores))

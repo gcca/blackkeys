@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -9,6 +10,7 @@ from argon2 import PasswordHasher
 from turso.lib_aio import connect as connect_local
 
 import ws
+from blackkeys.commands.boot import Main, RunCommand
 from blackkeys.commands.local_create_user import LocalCreateUser
 from blackkeys.commands.turso_init_schema import TursoInitSchema
 from blackkeys.commands.turso_pull_schema import TursoPullSchema
@@ -62,9 +64,7 @@ class LocalCreateUserTests(unittest.TestCase):
                 await db.close()
 
         with tempfile.TemporaryDirectory() as directory:
-            row = asyncio.run(
-                CreateAndRead(str(Path(directory) / "users.db"))
-            )
+            row = asyncio.run(CreateAndRead(str(Path(directory) / "users.db")))
 
         self.assertEqual(row[0], "alice")
         self.assertEqual(row[2], "alice@example.com")
@@ -108,9 +108,9 @@ class LocalCreateUserTests(unittest.TestCase):
 
     def TestRejectsEmptyPasswordAndEmail(self) -> None:
         for password, email in (("", "alice@example.com"), ("password", "")):
-            with self.subTest(password=password, email=email), self.assertRaises(
-                ValueError
-            ):
+            with self.subTest(
+                password=password, email=email
+            ), self.assertRaises(ValueError):
                 asyncio.run(LocalCreateUser("alice", password, email))
 
     def TestDoesNotCreateSchemaOrReplaceDuplicateUsers(self) -> None:
@@ -372,3 +372,68 @@ class TursoInitSchemaTests(unittest.TestCase):
         init.assert_awaited_once_with(db)
         push.assert_awaited_once_with(db)
         close.assert_awaited_once_with(db)
+
+
+class BootTests(unittest.TestCase):
+    def TestRunCommandInvokesSanicExec(self) -> None:
+        with patch("blackkeys.commands.boot.subprocess.run") as run:
+            RunCommand("turso-pull_schema")
+
+        run.assert_called_once_with(
+            [
+                sys.executable,
+                "-m",
+                "sanic",
+                "ws:app",
+                "exec",
+                "turso-pull_schema",
+            ],
+            check=True,
+        )
+
+    def TestMainRunsPullThenInitThenExecvSanic(self) -> None:
+        with patch(
+            "blackkeys.commands.boot.sys.argv",
+            ["boot", "ws:app", "--host=0.0.0.0", "--port=8000"],
+        ), patch("blackkeys.commands.boot.RunCommand") as run_command, patch(
+            "blackkeys.commands.boot.os.execv"
+        ) as execv:
+            Main()
+
+        self.assertEqual(
+            [call.args[0] for call in run_command.call_args_list],
+            ["turso-pull_schema", "turso-init_schema"],
+        )
+        execv.assert_called_once_with(
+            sys.executable,
+            [
+                sys.executable,
+                "-m",
+                "sanic",
+                "ws:app",
+                "--host=0.0.0.0",
+                "--port=8000",
+            ],
+        )
+
+    def TestMainSkipsPrepareWhenArgvIsExec(self) -> None:
+        with patch(
+            "blackkeys.commands.boot.sys.argv",
+            ["boot", "ws:app", "exec", "turso-pull_schema"],
+        ), patch("blackkeys.commands.boot.RunCommand") as run_command, patch(
+            "blackkeys.commands.boot.os.execv"
+        ) as execv:
+            Main()
+
+        run_command.assert_not_called()
+        execv.assert_called_once_with(
+            sys.executable,
+            [
+                sys.executable,
+                "-m",
+                "sanic",
+                "ws:app",
+                "exec",
+                "turso-pull_schema",
+            ],
+        )
