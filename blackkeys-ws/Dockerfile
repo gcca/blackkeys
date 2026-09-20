@@ -34,6 +34,8 @@ RUN mkdir /runtime \
     && mkdir -p /runtime/app /runtime/data \
     && chown 65532:65532 /runtime/app /runtime/data
 
+FROM quay.io/prometheus/node-exporter:v1.11.0 AS node-exporter
+
 FROM cgr.dev/chainguard/static:latest
 
 ENV PATH="/app/.venv/bin:/usr/bin" \
@@ -43,13 +45,14 @@ ENV PATH="/app/.venv/bin:/usr/bin" \
 WORKDIR /app
 
 COPY --from=builder /runtime/ /
+COPY --from=node-exporter --chown=65532:65532 /bin/node_exporter /usr/bin/node_exporter
 COPY --from=builder --chown=65532:65532 /app/.venv/ /app/.venv/
 COPY --chown=65532:65532 blackkeys/ /app/blackkeys/
 COPY --chown=65532:65532 ws.py /app/ws.py
 
 USER 65532:65532
 
-EXPOSE 8000
+EXPOSE 8000 9100
 
 ENTRYPOINT ["/app/.venv/bin/python", "-m", "blackkeys.commands.boot"]
 CMD ["ws:app", "--host=0.0.0.0", "--port=8000"]

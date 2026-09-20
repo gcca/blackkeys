@@ -10,7 +10,7 @@ from argon2 import PasswordHasher
 from turso.lib_aio import connect as connect_local
 
 import ws
-from blackkeys.commands.boot import Main, RunCommand
+from blackkeys.commands.boot import NODE_EXPORTER, Main, RunCommand
 from blackkeys.commands.local_create_user import LocalCreateUser
 from blackkeys.commands.turso_init_schema import TursoInitSchema
 from blackkeys.commands.turso_pull_schema import TursoPullSchema
@@ -396,6 +396,8 @@ class BootTests(unittest.TestCase):
             "blackkeys.commands.boot.sys.argv",
             ["boot", "ws:app", "--host=0.0.0.0", "--port=8000"],
         ), patch("blackkeys.commands.boot.RunCommand") as run_command, patch(
+            "blackkeys.commands.boot.subprocess.Popen"
+        ) as popen, patch(
             "blackkeys.commands.boot.os.execv"
         ) as execv:
             Main()
@@ -403,6 +405,10 @@ class BootTests(unittest.TestCase):
         self.assertEqual(
             [call.args[0] for call in run_command.call_args_list],
             ["turso-pull_schema", "turso-init_schema"],
+        )
+        popen.assert_called_once_with(
+            [NODE_EXPORTER, "--web.listen-address=0.0.0.0:9100"],
+            start_new_session=True,
         )
         execv.assert_called_once_with(
             sys.executable,
@@ -421,11 +427,14 @@ class BootTests(unittest.TestCase):
             "blackkeys.commands.boot.sys.argv",
             ["boot", "ws:app", "exec", "turso-pull_schema"],
         ), patch("blackkeys.commands.boot.RunCommand") as run_command, patch(
+            "blackkeys.commands.boot.subprocess.Popen"
+        ) as popen, patch(
             "blackkeys.commands.boot.os.execv"
         ) as execv:
             Main()
 
         run_command.assert_not_called()
+        popen.assert_not_called()
         execv.assert_called_once_with(
             sys.executable,
             [

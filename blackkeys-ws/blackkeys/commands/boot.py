@@ -4,6 +4,8 @@ import os
 import subprocess
 import sys
 
+NODE_EXPORTER = "/usr/bin/node_exporter"
+
 
 def RunCommand(name: str) -> None:
     subprocess.run(
@@ -12,10 +14,18 @@ def RunCommand(name: str) -> None:
     )
 
 
+def StartNodeExporter() -> None:
+    subprocess.Popen(
+        [NODE_EXPORTER, "--web.listen-address=0.0.0.0:9100"],
+        start_new_session=True,
+    )
+
+
 def Main() -> None:
     if len(sys.argv) < 3 or sys.argv[2] != "exec":
         RunCommand("turso-pull_schema")
         RunCommand("turso-init_schema")
+        StartNodeExporter()
     os.execv(sys.executable, [sys.executable, "-m", "sanic", *sys.argv[1:]])
 
 
