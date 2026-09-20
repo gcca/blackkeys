@@ -407,7 +407,7 @@ class BootTests(unittest.TestCase):
             ["turso-pull_schema", "turso-init_schema"],
         )
         popen.assert_called_once_with(
-            [NODE_EXPORTER, "--web.listen-address=0.0.0.0:9100"],
+            [NODE_EXPORTER, "--web.listen-address=:9100"],
             start_new_session=True,
         )
         execv.assert_called_once_with(

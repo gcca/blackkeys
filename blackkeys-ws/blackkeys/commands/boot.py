@@ -16,7 +16,7 @@ def RunCommand(name: str) -> None:
 
 def StartNodeExporter() -> None:
     subprocess.Popen(
-        [NODE_EXPORTER, "--web.listen-address=0.0.0.0:9100"],
+        [NODE_EXPORTER, "--web.listen-address=:9100"],
         start_new_session=True,
     )
 

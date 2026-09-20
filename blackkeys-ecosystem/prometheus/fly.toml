@@ -1,0 +1,19 @@
+app = 'blackkeys-prometheus'
+primary_region = 'ord'
+
+[build]
+  image = 'prom/prometheus:v3.5.0'
+
+[env]
+  TZ = 'UTC'
+
+[[files]]
+  guest_path = '/etc/prometheus/prometheus.yml'
+  local_path = 'prometheus.yml'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256
