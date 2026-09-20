@@ -158,7 +158,19 @@ private final class StubURLProtocol: URLProtocol, @unchecked Sendable {
 
 @Suite
 struct MapGeolocationPermissionPolicyTests {
-    @Test func trustedOriginPrompts() {
+    @Test func trustedOriginWithDefaultPortZeroPrompts() {
+        // WKSecurityOrigin reports port 0 for a URL's default port; this is
+        // the value the real delegate callback actually receives.
+        let decision = MapGeolocationPermissionPolicy.decision(
+            forProtocol: "https",
+            host: "demos.mappedin.com",
+            port: 0
+        )
+
+        #expect(decision == .prompt)
+    }
+
+    @Test func trustedOriginWithExplicitPort443Prompts() {
         let decision = MapGeolocationPermissionPolicy.decision(
             forProtocol: "https",
             host: "demos.mappedin.com",
@@ -172,7 +184,7 @@ struct MapGeolocationPermissionPolicyTests {
         let decision = MapGeolocationPermissionPolicy.decision(
             forProtocol: "http",
             host: "demos.mappedin.com",
-            port: 443
+            port: 0
         )
 
         #expect(decision == .deny)
@@ -182,7 +194,7 @@ struct MapGeolocationPermissionPolicyTests {
         let decision = MapGeolocationPermissionPolicy.decision(
             forProtocol: "https",
             host: "evil.example.com",
-            port: 443
+            port: 0
         )
 
         #expect(decision == .deny)

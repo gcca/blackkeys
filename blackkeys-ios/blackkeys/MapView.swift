@@ -4,10 +4,13 @@ import WebKit
 enum MapGeolocationPermissionPolicy {
     static let trustedProtocol = "https"
     static let trustedHost = "demos.mappedin.com"
-    static let trustedPort = 443
+    static let defaultHTTPSPort = 443
 
+    // WKSecurityOrigin reports port 0 for a URL's default port (e.g. an
+    // https:// origin with no explicit port), not 443, so both must be
+    // accepted as "the trusted origin's default port".
     static func decision(forProtocol scheme: String, host: String, port: Int) -> WKPermissionDecision {
-        guard scheme == trustedProtocol, host == trustedHost, port == trustedPort else {
+        guard scheme == trustedProtocol, host == trustedHost, port == 0 || port == defaultHTTPSPort else {
             return .deny
         }
         return .prompt
