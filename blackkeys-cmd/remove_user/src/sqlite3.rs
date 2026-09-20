@@ -1,161 +1,137 @@
 use std::{
-    ffi::{CStr, CString},
-    os::raw::{c_char, c_int, c_uchar, c_void},
+    future::Future,
     path::Path,
+    sync::Arc,
+    task::{Context, Poll, Wake, Waker},
 };
 
-const SQLITE_OK: c_int = 0;
-const SQLITE_DONE: c_int = 101;
-const SQLITE_OPEN_READWRITE: c_int = 2;
-const SQLITE_UTF8: c_uchar = 1;
+use turso::Builder;
 
-#[repr(C)]
-struct Connection {
-    _private: [u8; 0],
-}
-#[repr(C)]
-struct Statement {
-    _private: [u8; 0],
-}
-type Destructor = Option<unsafe extern "C" fn(*mut c_void)>;
-
-#[link(name = "sqlite3")]
-unsafe extern "C" {
-    fn sqlite3_open_v2(
-        filename: *const c_char,
-        db: *mut *mut Connection,
-        flags: c_int,
-        vfs: *const c_char,
-    ) -> c_int;
-    fn sqlite3_close(db: *mut Connection) -> c_int;
-    fn sqlite3_errmsg(db: *mut Connection) -> *const c_char;
-    fn sqlite3_prepare_v2(
-        db: *mut Connection,
-        sql: *const c_char,
-        length: c_int,
-        stmt: *mut *mut Statement,
-        tail: *mut *const c_char,
-    ) -> c_int;
-    fn sqlite3_bind_text64(
-        stmt: *mut Statement,
-        index: c_int,
-        value: *const c_char,
-        length: u64,
-        destructor: Destructor,
-        encoding: c_uchar,
-    ) -> c_int;
-    fn sqlite3_step(stmt: *mut Statement) -> c_int;
-    fn sqlite3_changes(db: *mut Connection) -> c_int;
-    fn sqlite3_finalize(stmt: *mut Statement) -> c_int;
-}
+const DELETE_SQL: &str = "DELETE FROM \"user\" WHERE username = ?";
 
 pub fn delete_user(path: &Path, username: &str) -> Result<(), String> {
-    let path = CString::new(path.to_string_lossy().as_bytes())
-        .map_err(|_| "database path contains a NUL byte".to_string())?;
-    let mut db = std::ptr::null_mut();
-    let open = unsafe {
-        sqlite3_open_v2(
-            path.as_ptr(),
-            &mut db,
-            SQLITE_OPEN_READWRITE,
-            std::ptr::null(),
-        )
-    };
-    if open != SQLITE_OK {
-        let error = error(db, "opening database", open);
-        if !db.is_null() {
-            let _ = unsafe { sqlite3_close(db) };
-        }
-        return Err(error);
-    }
-    let result = delete_on_connection(db, username);
-    let close = unsafe { sqlite3_close(db) };
-    match (result, close) {
-        (Err(error), _) => Err(error),
-        (Ok(()), SQLITE_OK) => Ok(()),
-        (Ok(()), status) => Err(format!(
-            "SQLite error while closing database (status {status})"
-        )),
-    }
-}
-
-fn delete_on_connection(db: *mut Connection, username: &str) -> Result<(), String> {
-    let mut stmt = std::ptr::null_mut();
-    let status = unsafe {
-        sqlite3_prepare_v2(
-            db,
-            c"DELETE FROM \"user\" WHERE username = ?".as_ptr(),
-            -1,
-            &mut stmt,
-            std::ptr::null_mut(),
-        )
-    };
-    if status != SQLITE_OK {
-        return Err(error(db, "preparing user delete", status));
-    }
-    let username_value = text_value(username, "username")?;
-    let result = (|| {
-        bind_text(db, stmt, 1, &username_value, "username")?;
-        let status = unsafe { sqlite3_step(stmt) };
-        if status != SQLITE_DONE {
-            return Err(error(db, "deleting user", status));
-        }
-        if unsafe { sqlite3_changes(db) } == 0 {
+    require_existing_database(path)?;
+    refuse_synced_replica(path)?;
+    check_no_nul(username, "username")?;
+    let path = database_path(path)?;
+    block_on(async move {
+        let database = Builder::new_local(path)
+            .build()
+            .await
+            .map_err(|failure| error("opening database", &failure))?;
+        let connection = database
+            .connect()
+            .map_err(|failure| error("opening database", &failure))?;
+        let mut statement = connection
+            .prepare(DELETE_SQL)
+            .await
+            .map_err(|failure| error("preparing user delete", &failure))?;
+        let changed = statement
+            .execute((username,))
+            .await
+            .map_err(|failure| error("deleting user", &failure))?;
+        if changed == 0 {
             return Err(format!("user not found: {username}"));
         }
+        connection
+            .cacheflush()
+            .map_err(|failure| error("closing database", &failure))?;
         Ok(())
-    })();
-    let finalize = unsafe { sqlite3_finalize(stmt) };
-    match (result, finalize) {
-        (Err(error), _) => Err(error),
-        (Ok(()), SQLITE_OK) => Ok(()),
-        (Ok(()), status) => Err(format!(
-            "SQLite error while finalizing user delete (status {status})"
-        )),
+    })
+}
+
+/// Drives a Turso future to completion on the calling thread.
+///
+/// The SDK is async, but these tools are single-shot synchronous commands. Keeping
+/// the executor here confines the async surface to this module, so `main` and every
+/// public signature stay synchronous.
+fn block_on<F: Future>(future: F) -> F::Output {
+    struct Unparker(std::thread::Thread);
+    impl Wake for Unparker {
+        fn wake(self: Arc<Self>) {
+            self.0.unpark();
+        }
+        fn wake_by_ref(self: &Arc<Self>) {
+            self.0.unpark();
+        }
+    }
+    let waker = Waker::from(Arc::new(Unparker(std::thread::current())));
+    let mut context = Context::from_waker(&waker);
+    let mut future = std::pin::pin!(future);
+    loop {
+        match future.as_mut().poll(&mut context) {
+            Poll::Ready(value) => return value,
+            Poll::Pending => std::thread::park(),
+        }
     }
 }
 
-fn text_value(value: &str, field: &str) -> Result<CString, String> {
-    CString::new(value).map_err(|_| format!("{field} contains a NUL byte"))
-}
-fn bind_text(
-    db: *mut Connection,
-    stmt: *mut Statement,
-    index: c_int,
-    value: &CString,
-    field: &str,
-) -> Result<(), String> {
-    let transient: Destructor = unsafe { std::mem::transmute::<isize, Destructor>(-1) };
-    let status = unsafe {
-        sqlite3_bind_text64(
-            stmt,
-            index,
-            value.as_ptr(),
-            value.as_bytes().len() as u64,
-            transient,
-            SQLITE_UTF8,
-        )
-    };
-    if status == SQLITE_OK {
-        Ok(())
-    } else {
-        Err(error(db, &format!("binding {field}"), status))
+/// `Builder::new_local` creates the database when it is missing, unlike the
+/// `sqlite3_open_v2` call this replaced. These tools must never bring one into
+/// existence, so the absence is rejected before Turso is reached.
+fn require_existing_database(path: &Path) -> Result<(), String> {
+    match std::fs::metadata(path) {
+        Ok(metadata) if metadata.is_file() => Ok(()),
+        Ok(_) => Err(format!("database path is not a file: {}", path.display())),
+        Err(failure) => Err(format!("cannot open database: {failure}")),
     }
 }
-fn error(db: *mut Connection, action: &str, status: c_int) -> String {
-    let detail = if db.is_null() {
-        None
-    } else {
-        let message = unsafe { sqlite3_errmsg(db) };
-        (!message.is_null()).then(|| {
-            unsafe { CStr::from_ptr(message) }
-                .to_string_lossy()
-                .into_owned()
-        })
-    };
-    match detail {
-        Some(detail) => format!("SQLite error while {action} (status {status}): {detail}"),
-        None => format!("SQLite error while {action} (status {status})"),
+
+/// Turso records a mutation for replication only on a connection that enabled
+/// change capture. A plain local connection stores the row but leaves no change
+/// record, so the write would never reach the remote and would be dropped by the
+/// next pull. Refuse the write rather than lose it.
+fn refuse_synced_replica(path: &Path) -> Result<(), String> {
+    if sidecar(path, "-info").exists() {
+        return Err(format!(
+            "{} is a Turso synced replica; refusing to write without TURSO_DATABASE_URL",
+            path.display()
+        ));
+    }
+    Ok(())
+}
+
+fn sidecar(path: &Path, suffix: &str) -> std::path::PathBuf {
+    let mut sidecar = path.as_os_str().to_owned();
+    sidecar.push(suffix);
+    sidecar.into()
+}
+
+fn database_path(path: &Path) -> Result<&str, String> {
+    path.to_str()
+        .ok_or_else(|| "database path is not valid UTF-8".to_string())
+}
+
+fn check_no_nul(value: &str, field: &str) -> Result<(), String> {
+    if value.contains('\0') {
+        return Err(format!("{field} contains a NUL byte"));
+    }
+    Ok(())
+}
+
+fn error(action: &str, failure: &turso::Error) -> String {
+    format!(
+        "SQLite error while {action} (turso {}): {failure}",
+        kind(failure)
+    )
+}
+
+fn kind(failure: &turso::Error) -> &'static str {
+    match failure {
+        turso::Error::ToSqlConversionFailure(_) => "to-sql-conversion-failure",
+        turso::Error::QueryReturnedNoRows => "query-returned-no-rows",
+        turso::Error::ConversionFailure(_) => "conversion-failure",
+        turso::Error::Busy(_) => "busy",
+        turso::Error::BusySnapshot(_) => "busy-snapshot",
+        turso::Error::Interrupt(_) => "interrupt",
+        turso::Error::Error(_) => "error",
+        turso::Error::Misuse(_) => "misuse",
+        turso::Error::Constraint(_) => "constraint",
+        turso::Error::Readonly(_) => "readonly",
+        turso::Error::DatabaseFull(_) => "database-full",
+        turso::Error::NotAdb(_) => "not-a-db",
+        turso::Error::Corrupt(_) => "corrupt",
+        turso::Error::IoError(..) => "io-error",
     }
 }
 
@@ -164,19 +140,24 @@ mod tests {
     use super::*;
     use std::{
         fs::File,
+        path::PathBuf,
+        sync::atomic::{AtomicU64, Ordering},
         time::{SystemTime, UNIX_EPOCH},
     };
 
-    const SQLITE_ROW: c_int = 100;
-
-    fn scratch_database(schema: bool) -> std::path::PathBuf {
+    fn scratch_database(schema: bool) -> PathBuf {
+        // The clock alone is not unique: tests run in parallel and can start within
+        // the same tick, which Turso reports as a locked database rather than
+        // silently sharing the file the way the previous SQLite fixtures did.
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
         let path = std::env::temp_dir().join(format!(
-            "blackkeys-remove-user-{}-{}.db",
+            "blackkeys-remove-user-{}-{}-{}.db",
             std::process::id(),
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
+                .as_nanos(),
+            COUNTER.fetch_add(1, Ordering::Relaxed)
         ));
         File::create(&path).unwrap();
         if schema {
@@ -187,114 +168,63 @@ mod tests {
         }
         path
     }
+
     fn execute(path: &Path, sql: &str) {
-        let db = open(path);
-        execute_on(db, sql);
-        assert_eq!(unsafe { sqlite3_close(db) }, SQLITE_OK);
-    }
-    fn open(path: &Path) -> *mut Connection {
-        let path = CString::new(path.to_string_lossy().as_bytes()).unwrap();
-        let mut db = std::ptr::null_mut();
-        assert_eq!(
-            unsafe {
-                sqlite3_open_v2(
-                    path.as_ptr(),
-                    &mut db,
-                    SQLITE_OPEN_READWRITE,
-                    std::ptr::null(),
-                )
-            },
-            SQLITE_OK
-        );
-        db
-    }
-    fn execute_on(db: *mut Connection, sql: &str) {
-        let sql = CString::new(sql).unwrap();
-        let mut stmt = std::ptr::null_mut();
-        assert_eq!(
-            unsafe { sqlite3_prepare_v2(db, sql.as_ptr(), -1, &mut stmt, std::ptr::null_mut()) },
-            SQLITE_OK
-        );
-        assert_eq!(unsafe { sqlite3_step(stmt) }, SQLITE_DONE);
-        assert_eq!(unsafe { sqlite3_finalize(stmt) }, SQLITE_OK);
-    }
-    fn insert_user(path: &Path, username: &str, password: &str, email: &str) {
-        let db = open(path);
-        let mut stmt = std::ptr::null_mut();
-        assert_eq!(
-            unsafe {
-                sqlite3_prepare_v2(
-                    db,
-                    c"INSERT INTO \"user\" (username, password, email) VALUES (?, ?, ?)".as_ptr(),
-                    -1,
-                    &mut stmt,
-                    std::ptr::null_mut(),
-                )
-            },
-            SQLITE_OK
-        );
-        bind_text_for_test(stmt, 1, username);
-        bind_text_for_test(stmt, 2, password);
-        bind_text_for_test(stmt, 3, email);
-        assert_eq!(unsafe { sqlite3_step(stmt) }, SQLITE_DONE);
-        assert_eq!(unsafe { sqlite3_finalize(stmt) }, SQLITE_OK);
-        assert_eq!(unsafe { sqlite3_close(db) }, SQLITE_OK);
-    }
-    fn bind_text_for_test(stmt: *mut Statement, index: c_int, value: &str) {
-        let value = CString::new(value).unwrap();
-        let transient: Destructor = unsafe { std::mem::transmute::<isize, Destructor>(-1) };
-        assert_eq!(
-            unsafe {
-                sqlite3_bind_text64(
-                    stmt,
-                    index,
-                    value.as_ptr(),
-                    value.as_bytes().len() as u64,
-                    transient,
-                    SQLITE_UTF8,
-                )
-            },
-            SQLITE_OK
-        );
-    }
-    fn usernames(path: &Path) -> Vec<String> {
-        let db = open(path);
-        let mut stmt = std::ptr::null_mut();
-        assert_eq!(
-            unsafe {
-                sqlite3_prepare_v2(
-                    db,
-                    c"SELECT username FROM \"user\" ORDER BY username ASC".as_ptr(),
-                    -1,
-                    &mut stmt,
-                    std::ptr::null_mut(),
-                )
-            },
-            SQLITE_OK
-        );
-        let mut names = Vec::new();
-        loop {
-            match unsafe { sqlite3_step(stmt) } {
-                SQLITE_ROW => {
-                    let value = unsafe { sqlite3_column_text(stmt, 0) };
-                    names.push(
-                        unsafe { CStr::from_ptr(value.cast()) }
-                            .to_str()
-                            .unwrap()
-                            .to_owned(),
-                    );
-                }
-                SQLITE_DONE => break,
-                status => panic!("unexpected SQLite status {status}"),
-            }
-        }
-        assert_eq!(unsafe { sqlite3_finalize(stmt) }, SQLITE_OK);
-        assert_eq!(unsafe { sqlite3_close(db) }, SQLITE_OK);
-        names
+        let path = path.to_str().unwrap().to_owned();
+        let sql = sql.to_owned();
+        block_on(async move {
+            let database = Builder::new_local(&path).build().await.unwrap();
+            let connection = database.connect().unwrap();
+            connection.execute_batch(&sql).await.unwrap();
+            connection.cacheflush().unwrap();
+        });
     }
 
-    unsafe extern "C" {
-        fn sqlite3_column_text(stmt: *mut Statement, index: c_int) -> *const c_uchar;
+    fn insert_user(path: &Path, username: &str, password: &str, email: &str) {
+        let path = path.to_str().unwrap().to_owned();
+        let (username, password, email) =
+            (username.to_owned(), password.to_owned(), email.to_owned());
+        block_on(async move {
+            let database = Builder::new_local(&path).build().await.unwrap();
+            let connection = database.connect().unwrap();
+            connection
+                .execute(
+                    "INSERT INTO \"user\" (username, password, email) VALUES (?, ?, ?)",
+                    (username, password, email),
+                )
+                .await
+                .unwrap();
+            connection.cacheflush().unwrap();
+        });
+    }
+
+    fn usernames(path: &Path) -> Vec<String> {
+        let path = path.to_str().unwrap().to_owned();
+        block_on(async move {
+            let database = Builder::new_local(&path).build().await.unwrap();
+            let connection = database.connect().unwrap();
+            let mut rows = connection
+                .query("SELECT username FROM \"user\" ORDER BY username ASC", ())
+                .await
+                .unwrap();
+            let mut names = Vec::new();
+            while let Some(row) = rows.next().await.unwrap() {
+                match row.get_value(0).unwrap() {
+                    turso::Value::Text(username) => names.push(username),
+                    value => panic!("unexpected username value {value:?}"),
+                }
+            }
+            names
+        })
+    }
+
+    /// Turso keeps a write-ahead log beside the database, so removing only the
+    /// database file would leak sidecars into the temporary directory.
+    fn remove_database(path: &Path) {
+        std::fs::remove_file(path).unwrap();
+        for suffix in ["-wal", "-shm"] {
+            let _ = std::fs::remove_file(sidecar(path, suffix));
+        }
     }
 
     #[test]
@@ -304,7 +234,7 @@ mod tests {
         insert_user(&path, "bob", "hash-bob", "bob@example.test");
         delete_user(&path, "alice").unwrap();
         assert_eq!(usernames(&path), ["bob"]);
-        std::fs::remove_file(path).unwrap();
+        remove_database(&path);
     }
 
     #[test]
@@ -314,13 +244,25 @@ mod tests {
         let error = delete_user(&path, "alice").unwrap_err();
         assert!(error.contains("user not found: alice"));
         assert_eq!(usernames(&path), ["bob"]);
-        std::fs::remove_file(path).unwrap();
+        remove_database(&path);
     }
 
     #[test]
     fn fails_without_user_table() {
         let path = scratch_database(false);
         assert!(delete_user(&path, "alice").is_err());
-        std::fs::remove_file(path).unwrap();
+        remove_database(&path);
+    }
+
+    #[test]
+    fn refuses_to_write_to_a_synced_replica() {
+        let path = scratch_database(true);
+        insert_user(&path, "bob", "hash-bob", "bob@example.test");
+        File::create(sidecar(&path, "-info")).unwrap();
+        let error = delete_user(&path, "bob").unwrap_err();
+        assert!(error.contains("Turso synced replica"));
+        assert_eq!(usernames(&path), ["bob"]);
+        std::fs::remove_file(sidecar(&path, "-info")).unwrap();
+        remove_database(&path);
     }
 }

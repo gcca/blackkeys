@@ -1,45 +1,13 @@
 use std::{
-    ffi::{CStr, CString},
-    os::raw::{c_char, c_int, c_uchar},
+    future::Future,
     path::Path,
+    sync::Arc,
+    task::{Context, Poll, Wake, Waker},
 };
 
-const SQLITE_OK: c_int = 0;
-const SQLITE_ROW: c_int = 100;
-const SQLITE_DONE: c_int = 101;
-const SQLITE_OPEN_READONLY: c_int = 1;
+use turso::{Builder, Value};
 
-#[repr(C)]
-struct Connection {
-    _private: [u8; 0],
-}
-
-#[repr(C)]
-struct Statement {
-    _private: [u8; 0],
-}
-
-#[link(name = "sqlite3")]
-unsafe extern "C" {
-    fn sqlite3_open_v2(
-        filename: *const c_char,
-        db: *mut *mut Connection,
-        flags: c_int,
-        vfs: *const c_char,
-    ) -> c_int;
-    fn sqlite3_close(db: *mut Connection) -> c_int;
-    fn sqlite3_errmsg(db: *mut Connection) -> *const c_char;
-    fn sqlite3_prepare_v2(
-        db: *mut Connection,
-        sql: *const c_char,
-        length: c_int,
-        stmt: *mut *mut Statement,
-        tail: *mut *const c_char,
-    ) -> c_int;
-    fn sqlite3_step(stmt: *mut Statement) -> c_int;
-    fn sqlite3_column_text(stmt: *mut Statement, index: c_int) -> *const c_uchar;
-    fn sqlite3_finalize(stmt: *mut Statement) -> c_int;
-}
+const LIST_SQL: &str = "SELECT username, email, strftime('%Y-%m-%dT%H:%M:%SZ', created_at, 'unixepoch') FROM \"user\" ORDER BY username ASC";
 
 pub struct User {
     pub username: String,
@@ -48,99 +16,129 @@ pub struct User {
 }
 
 pub fn list_users(path: &Path) -> Result<Vec<User>, String> {
-    let path = CString::new(path.to_string_lossy().as_bytes())
-        .map_err(|_| "database path contains a NUL byte".to_string())?;
-    let mut db = std::ptr::null_mut();
-    let open = unsafe {
-        sqlite3_open_v2(
-            path.as_ptr(),
-            &mut db,
-            SQLITE_OPEN_READONLY,
-            std::ptr::null(),
-        )
-    };
-    if open != SQLITE_OK {
-        let error = error(db, "opening database read-only", open);
-        if !db.is_null() {
-            let _ = unsafe { sqlite3_close(db) };
-        }
-        return Err(error);
-    }
+    require_existing_database(path)?;
+    let path = database_path(path)?;
+    block_on(async move {
+        // Everything up to and including the first row fetch is attributed to
+        // preparing the list. Turso reports a missing table or column at prepare
+        // time, but folding the fetch in keeps the reported stage honest even if a
+        // later release defers the failure to execution.
+        let preparing = |failure: turso::Error| error("preparing user list", &failure);
+        let database = Builder::new_local(path).build().await.map_err(preparing)?;
+        let connection = database.connect().map_err(preparing)?;
+        // The previous implementation opened with SQLITE_OPEN_READONLY. Turso 0.7.2
+        // has no read-only builder flag, so the guarantee is reasserted on the
+        // connection instead.
+        connection
+            .pragma_update("query_only", "true")
+            .await
+            .map_err(preparing)?;
+        let mut statement = connection.prepare(LIST_SQL).await.map_err(preparing)?;
+        let mut rows = statement.query(()).await.map_err(preparing)?;
+        let mut pending = rows.next().await.map_err(preparing)?;
 
-    let result = list_on_connection(db);
-    let close = unsafe { sqlite3_close(db) };
-    match (result, close) {
-        (Err(error), _) => Err(error),
-        (Ok(users), SQLITE_OK) => Ok(users),
-        (Ok(_), status) => Err(format!(
-            "SQLite error while closing database (status {status})"
-        )),
-    }
-}
-
-fn list_on_connection(db: *mut Connection) -> Result<Vec<User>, String> {
-    let mut stmt = std::ptr::null_mut();
-    let status = unsafe {
-        sqlite3_prepare_v2(
-            db,
-            c"SELECT username, email, strftime('%Y-%m-%dT%H:%M:%SZ', created_at, 'unixepoch') FROM \"user\" ORDER BY username ASC".as_ptr(),
-            -1,
-            &mut stmt,
-            std::ptr::null_mut(),
-        )
-    };
-    if status != SQLITE_OK {
-        return Err(error(db, "preparing user list", status));
-    }
-
-    let result = (|| {
         let mut users = Vec::new();
-        loop {
-            match unsafe { sqlite3_step(stmt) } {
-                SQLITE_ROW => users.push(User {
-                    username: column_text(stmt, 0, "username")?,
-                    email: column_text(stmt, 1, "email")?,
-                    created_at: column_text(stmt, 2, "created_at")?,
-                }),
-                SQLITE_DONE => return Ok(users),
-                status => return Err(error(db, "reading user list", status)),
-            }
+        while let Some(row) = pending {
+            users.push(User {
+                username: column_text(&row, 0, "username")?,
+                email: column_text(&row, 1, "email")?,
+                created_at: column_text(&row, 2, "created_at")?,
+            });
+            pending = rows
+                .next()
+                .await
+                .map_err(|failure| error("reading user list", &failure))?;
         }
-    })();
-    let finalize = unsafe { sqlite3_finalize(stmt) };
-    match (result, finalize) {
-        (Err(error), _) => Err(error),
-        (Ok(users), SQLITE_OK) => Ok(users),
-        (Ok(_), status) => Err(format!(
-            "SQLite error while finalizing user list (status {status})"
-        )),
+        Ok(users)
+    })
+}
+
+fn column_text(row: &turso::Row, index: usize, column: &str) -> Result<String, String> {
+    match row
+        .get_value(index)
+        .map_err(|failure| error("reading user list", &failure))?
+    {
+        Value::Null => Err(format!("SQLite query returned NULL {column}")),
+        Value::Text(text) => Ok(text),
+        // libsqlite3 coerced non-text columns through sqlite3_column_text; keep that
+        // behaviour rather than narrowing it.
+        Value::Integer(number) => Ok(number.to_string()),
+        Value::Real(number) => Ok(number.to_string()),
+        Value::Blob(bytes) => Ok(String::from_utf8_lossy(&bytes).into_owned()),
     }
 }
 
-fn column_text(stmt: *mut Statement, index: c_int, column: &str) -> Result<String, String> {
-    let value = unsafe { sqlite3_column_text(stmt, index) };
-    if value.is_null() {
-        return Err(format!("SQLite query returned NULL {column}"));
+/// Drives a Turso future to completion on the calling thread.
+///
+/// The SDK is async, but these tools are single-shot synchronous commands. Keeping
+/// the executor here confines the async surface to this module, so `main` and every
+/// public signature stay synchronous.
+fn block_on<F: Future>(future: F) -> F::Output {
+    struct Unparker(std::thread::Thread);
+    impl Wake for Unparker {
+        fn wake(self: Arc<Self>) {
+            self.0.unpark();
+        }
+        fn wake_by_ref(self: &Arc<Self>) {
+            self.0.unpark();
+        }
     }
-    Ok(unsafe { CStr::from_ptr(value.cast()) }
-        .to_string_lossy()
-        .into_owned())
+    let waker = Waker::from(Arc::new(Unparker(std::thread::current())));
+    let mut context = Context::from_waker(&waker);
+    let mut future = std::pin::pin!(future);
+    loop {
+        match future.as_mut().poll(&mut context) {
+            Poll::Ready(value) => return value,
+            Poll::Pending => std::thread::park(),
+        }
+    }
 }
 
-fn error(db: *mut Connection, action: &str, status: c_int) -> String {
-    let detail = if db.is_null() {
-        None
-    } else {
-        let message = unsafe { sqlite3_errmsg(db) };
-        (!message.is_null()).then(|| {
-            unsafe { CStr::from_ptr(message) }
-                .to_string_lossy()
-                .into_owned()
-        })
-    };
-    match detail {
-        Some(detail) => format!("SQLite error while {action} (status {status}): {detail}"),
-        None => format!("SQLite error while {action} (status {status})"),
+/// `Builder::new_local` creates the database when it is missing, unlike the
+/// `sqlite3_open_v2` call this replaced. These tools must never bring one into
+/// existence, so the absence is rejected before Turso is reached.
+fn require_existing_database(path: &Path) -> Result<(), String> {
+    match std::fs::metadata(path) {
+        Ok(metadata) if metadata.is_file() => Ok(()),
+        Ok(_) => Err(format!("database path is not a file: {}", path.display())),
+        Err(failure) => Err(format!("cannot open database: {failure}")),
+    }
+}
+
+fn sidecar(path: &Path, suffix: &str) -> std::path::PathBuf {
+    let mut sidecar = path.as_os_str().to_owned();
+    sidecar.push(suffix);
+    sidecar.into()
+}
+
+fn database_path(path: &Path) -> Result<&str, String> {
+    path.to_str()
+        .ok_or_else(|| "database path is not valid UTF-8".to_string())
+}
+
+fn error(action: &str, failure: &turso::Error) -> String {
+    format!(
+        "SQLite error while {action} (turso {}): {failure}",
+        kind(failure)
+    )
+}
+
+fn kind(failure: &turso::Error) -> &'static str {
+    match failure {
+        turso::Error::ToSqlConversionFailure(_) => "to-sql-conversion-failure",
+        turso::Error::QueryReturnedNoRows => "query-returned-no-rows",
+        turso::Error::ConversionFailure(_) => "conversion-failure",
+        turso::Error::Busy(_) => "busy",
+        turso::Error::BusySnapshot(_) => "busy-snapshot",
+        turso::Error::Interrupt(_) => "interrupt",
+        turso::Error::Error(_) => "error",
+        turso::Error::Misuse(_) => "misuse",
+        turso::Error::Constraint(_) => "constraint",
+        turso::Error::Readonly(_) => "readonly",
+        turso::Error::DatabaseFull(_) => "database-full",
+        turso::Error::NotAdb(_) => "not-a-db",
+        turso::Error::Corrupt(_) => "corrupt",
+        turso::Error::IoError(..) => "io-error",
     }
 }
 
@@ -148,19 +146,6 @@ fn error(db: *mut Connection, action: &str, status: c_int) -> String {
 pub mod test_support {
     use super::*;
     use std::fs::File;
-
-    const SQLITE_OPEN_READWRITE: c_int = 2;
-
-    unsafe extern "C" {
-        fn sqlite3_bind_text(
-            stmt: *mut Statement,
-            index: c_int,
-            value: *const c_char,
-            length: c_int,
-            destructor: Option<unsafe extern "C" fn(*mut std::ffi::c_void)>,
-        ) -> c_int;
-        fn sqlite3_bind_int64(stmt: *mut Statement, index: c_int, value: i64) -> c_int;
-    }
 
     pub fn create_empty_database(path: &Path) {
         File::create(path).unwrap();
@@ -171,90 +156,52 @@ pub mod test_support {
             path,
             "CREATE TABLE \"user\" (username TEXT, password TEXT, email TEXT, created_at INTEGER);",
         );
-        let db = open_readwrite(path);
-        for (username, password, email, created_at) in users {
-            let mut stmt = std::ptr::null_mut();
-            assert_eq!(
-                unsafe {
-                    sqlite3_prepare_v2(
-                        db,
-                        c"INSERT INTO \"user\" (username, password, email, created_at) VALUES (?, ?, ?, ?)".as_ptr(),
-                        -1,
-                        &mut stmt,
-                        std::ptr::null_mut(),
+        let owned: Vec<(String, String, String, i64)> = users
+            .iter()
+            .map(|(username, password, email, created_at)| {
+                (
+                    (*username).to_owned(),
+                    (*password).to_owned(),
+                    (*email).to_owned(),
+                    *created_at,
+                )
+            })
+            .collect();
+        let path = path.to_str().unwrap().to_owned();
+        block_on(async move {
+            let database = Builder::new_local(&path).build().await.unwrap();
+            let connection = database.connect().unwrap();
+            for user in owned {
+                connection
+                    .execute(
+                        "INSERT INTO \"user\" (username, password, email, created_at) VALUES (?, ?, ?, ?)",
+                        user,
                     )
-                },
-                SQLITE_OK
-            );
-            bind_text(stmt, 1, username);
-            bind_text(stmt, 2, password);
-            bind_text(stmt, 3, email);
-            assert_eq!(
-                unsafe { sqlite3_bind_int64(stmt, 4, *created_at) },
-                SQLITE_OK
-            );
-            assert_eq!(unsafe { sqlite3_step(stmt) }, SQLITE_DONE);
-            assert_eq!(unsafe { sqlite3_finalize(stmt) }, SQLITE_OK);
-        }
-        assert_eq!(unsafe { sqlite3_close(db) }, SQLITE_OK);
+                    .await
+                    .unwrap();
+            }
+            connection.cacheflush().unwrap();
+        });
     }
 
     pub fn create_database_with_sql(path: &Path, sql: &str) {
         File::create(path).unwrap();
-        let db = open_readwrite(path);
-        for statement in sql
-            .split(';')
-            .filter(|statement| !statement.trim().is_empty())
-        {
-            execute(db, statement);
+        let path = path.to_str().unwrap().to_owned();
+        let sql = sql.to_owned();
+        block_on(async move {
+            let database = Builder::new_local(&path).build().await.unwrap();
+            let connection = database.connect().unwrap();
+            connection.execute_batch(&sql).await.unwrap();
+            connection.cacheflush().unwrap();
+        });
+    }
+
+    /// Turso keeps a write-ahead log beside the database, so removing only the
+    /// database file would leak sidecars into the temporary directory.
+    pub fn remove_database(path: &Path) {
+        std::fs::remove_file(path).unwrap();
+        for suffix in ["-wal", "-shm"] {
+            let _ = std::fs::remove_file(sidecar(path, suffix));
         }
-        assert_eq!(unsafe { sqlite3_close(db) }, SQLITE_OK);
-    }
-
-    fn open_readwrite(path: &Path) -> *mut Connection {
-        let path = CString::new(path.to_string_lossy().as_bytes()).unwrap();
-        let mut db = std::ptr::null_mut();
-        assert_eq!(
-            unsafe {
-                sqlite3_open_v2(
-                    path.as_ptr(),
-                    &mut db,
-                    SQLITE_OPEN_READWRITE,
-                    std::ptr::null(),
-                )
-            },
-            SQLITE_OK
-        );
-        db
-    }
-
-    fn execute(db: *mut Connection, sql: &str) {
-        let sql = CString::new(sql).unwrap();
-        let mut stmt = std::ptr::null_mut();
-        assert_eq!(
-            unsafe { sqlite3_prepare_v2(db, sql.as_ptr(), -1, &mut stmt, std::ptr::null_mut()) },
-            SQLITE_OK
-        );
-        assert_eq!(unsafe { sqlite3_step(stmt) }, SQLITE_DONE);
-        assert_eq!(unsafe { sqlite3_finalize(stmt) }, SQLITE_OK);
-    }
-
-    fn bind_text(stmt: *mut Statement, index: c_int, value: &str) {
-        let value = CString::new(value).unwrap();
-        let transient = unsafe {
-            std::mem::transmute::<isize, Option<unsafe extern "C" fn(*mut std::ffi::c_void)>>(-1)
-        };
-        assert_eq!(
-            unsafe {
-                sqlite3_bind_text(
-                    stmt,
-                    index,
-                    value.as_ptr(),
-                    value.as_bytes().len() as c_int,
-                    transient,
-                )
-            },
-            SQLITE_OK
-        );
     }
 }

@@ -181,7 +181,7 @@ mod tests {
         assert!(output.find("alice").unwrap() < output.find("zoe").unwrap());
         assert!(!output.contains("super-secret-hash"));
         assert!(!output.contains("do-not-print"));
-        fs::remove_file(path).unwrap();
+        sqlite3::test_support::remove_database(&path);
     }
 
     #[test]
@@ -196,7 +196,7 @@ mod tests {
             .unwrap(),
             "USERNAME  EMAIL  CREATED AT (UTC)\n--------  -----  ----------------\n(no users)\n"
         );
-        fs::remove_file(path).unwrap();
+        sqlite3::test_support::remove_database(&path);
     }
 
     #[test]
@@ -223,7 +223,7 @@ mod tests {
         .unwrap_err();
         assert!(error.contains("SQLite error while preparing user list"));
         assert_eq!(fs::read(&missing_table).unwrap(), before);
-        fs::remove_file(missing_table).unwrap();
+        sqlite3::test_support::remove_database(&missing_table);
 
         let malformed_schema = scratch_path("malformed-schema");
         sqlite3::test_support::create_database_with_sql(
@@ -235,7 +235,7 @@ mod tests {
         })
         .unwrap_err();
         assert!(error.contains("SQLite error while preparing user list"));
-        fs::remove_file(malformed_schema).unwrap();
+        sqlite3::test_support::remove_database(&malformed_schema);
 
         let invalid_timestamp = scratch_path("invalid-timestamp");
         sqlite3::test_support::create_database_with_sql(
@@ -248,6 +248,6 @@ mod tests {
         })
         .unwrap_err();
         assert!(error.contains("NULL created_at"));
-        fs::remove_file(invalid_timestamp).unwrap();
+        sqlite3::test_support::remove_database(&invalid_timestamp);
     }
 }
