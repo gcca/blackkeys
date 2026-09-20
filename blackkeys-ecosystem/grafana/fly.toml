@@ -1,0 +1,28 @@
+app = 'blackkeys-grafana'
+primary_region = 'ord'
+
+[build]
+  image = 'grafana/grafana:12.2.0'
+
+[env]
+  TZ = 'UTC'
+  GF_SECURITY_ADMIN_USER = 'blackkeys'
+  GF_USERS_ALLOW_SIGN_UP = 'false'
+  GF_AUTH_ANONYMOUS_ENABLED = 'true'
+  GF_AUTH_ANONYMOUS_ORG_ROLE = 'Editor'
+
+[[mounts]]
+  source = 'grafana'
+  destination = '/var/lib/grafana'
+  initial_size = '1gb'
+
+[[files]]
+  guest_path = '/etc/grafana/provisioning/datasources/prometheus.yaml'
+  local_path = 'prometheus.yaml'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256
