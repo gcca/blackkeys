@@ -11,6 +11,11 @@ primary_region = 'ord'
   guest_path = '/etc/prometheus/prometheus.yml'
   local_path = 'prometheus.yml'
 
+[[mounts]]
+  source = 'prometheus'
+  destination = '/prometheus'
+  initial_size = '1gb'
+
 [[vm]]
   size = 'shared-cpu-1x'
   memory = '256mb'
