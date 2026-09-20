@@ -105,6 +105,7 @@ fn require_existing_database(path: &Path) -> Result<(), String> {
     }
 }
 
+#[cfg(test)]
 fn sidecar(path: &Path, suffix: &str) -> std::path::PathBuf {
     let mut sidecar = path.as_os_str().to_owned();
     sidecar.push(suffix);

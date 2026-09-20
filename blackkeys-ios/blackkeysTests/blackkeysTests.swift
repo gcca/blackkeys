@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import WebKit
 @testable import blackkeys
 
 @MainActor
@@ -153,4 +154,47 @@ private final class StubURLProtocol: URLProtocol, @unchecked Sendable {
     }
 
     override func stopLoading() {}
+}
+
+@Suite
+struct MapGeolocationPermissionPolicyTests {
+    @Test func trustedOriginPrompts() {
+        let decision = MapGeolocationPermissionPolicy.decision(
+            forProtocol: "https",
+            host: "demos.mappedin.com",
+            port: 443
+        )
+
+        #expect(decision == .prompt)
+    }
+
+    @Test func wrongProtocolIsDenied() {
+        let decision = MapGeolocationPermissionPolicy.decision(
+            forProtocol: "http",
+            host: "demos.mappedin.com",
+            port: 443
+        )
+
+        #expect(decision == .deny)
+    }
+
+    @Test func wrongHostIsDenied() {
+        let decision = MapGeolocationPermissionPolicy.decision(
+            forProtocol: "https",
+            host: "evil.example.com",
+            port: 443
+        )
+
+        #expect(decision == .deny)
+    }
+
+    @Test func wrongPortIsDenied() {
+        let decision = MapGeolocationPermissionPolicy.decision(
+            forProtocol: "https",
+            host: "demos.mappedin.com",
+            port: 8443
+        )
+
+        #expect(decision == .deny)
+    }
 }

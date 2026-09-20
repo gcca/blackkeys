@@ -1,4 +1,5 @@
 use std::{
+    env,
     future::Future,
     path::Path,
     sync::Arc,
@@ -6,38 +7,154 @@ use std::{
 };
 
 use turso::Builder;
+use turso::sync::Builder as SyncBuilder;
 
 const DELETE_SQL: &str = "DELETE FROM \"user\" WHERE username = ?";
+const TURSO_DATABASE_URL_VAR: &str = "TURSO_DATABASE_URL";
+const TURSO_AUTH_TOKEN_VAR: &str = "TURSO_AUTH_TOKEN";
+
+/// Where a write should be routed, decided purely from the presence of the
+/// `-info` sync sidecar and the two Turso Cloud sync environment variables.
+/// Kept free of environment I/O so the branching decision itself is
+/// unit-testable without a reachable Turso remote.
+enum WriteTarget {
+    Local,
+    Synced {
+        database_url: String,
+        auth_token: String,
+    },
+}
+
+// No `#[derive(Debug)]`: `auth_token` must never be printable via `{:?}`,
+// including in a failed `assert_eq!`/panic message from a test.
+impl std::fmt::Debug for WriteTarget {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WriteTarget::Local => f.write_str("Local"),
+            WriteTarget::Synced { database_url, .. } => {
+                write!(
+                    f,
+                    "Synced {{ database_url: {database_url:?}, auth_token: \"<redacted>\" }}"
+                )
+            }
+        }
+    }
+}
+
+/// Turso records a mutation for replication only on a connection that enabled
+/// change capture. A plain local connection stores the row but leaves no change
+/// record, so the write would never reach the remote and would be dropped by the
+/// next pull. When the sidecar marks the database as a synced replica, only
+/// proceed if both Turso Cloud sync credentials were supplied via the
+/// environment; otherwise refuse the write rather than silently lose it.
+fn write_target(
+    path: &Path,
+    database_url: Option<String>,
+    auth_token: Option<String>,
+) -> Result<WriteTarget, String> {
+    if !sidecar(path, "-info").exists() {
+        return Ok(WriteTarget::Local);
+    }
+    match (database_url, auth_token) {
+        (Some(database_url), Some(auth_token)) => Ok(WriteTarget::Synced {
+            database_url,
+            auth_token,
+        }),
+        _ => Err(format!(
+            "{} is a Turso synced replica; refusing to write without TURSO_DATABASE_URL",
+            path.display()
+        )),
+    }
+}
+
+fn write_target_from_env(path: &Path) -> Result<WriteTarget, String> {
+    write_target(
+        path,
+        env::var(TURSO_DATABASE_URL_VAR).ok(),
+        env::var(TURSO_AUTH_TOKEN_VAR).ok(),
+    )
+}
+
+/// Strips the auth token out of an error message before it is returned, in
+/// case a Turso Cloud error response or a nested `Display` impl ever echoes
+/// it back.
+fn scrub(auth_token: &str, message: String) -> String {
+    if auth_token.is_empty() {
+        return message;
+    }
+    message.replace(auth_token, "<redacted>")
+}
 
 pub fn delete_user(path: &Path, username: &str) -> Result<(), String> {
     require_existing_database(path)?;
-    refuse_synced_replica(path)?;
+    let target = write_target_from_env(path)?;
     check_no_nul(username, "username")?;
-    let path = database_path(path)?;
-    block_on(async move {
-        let database = Builder::new_local(path)
-            .build()
-            .await
-            .map_err(|failure| error("opening database", &failure))?;
-        let connection = database
-            .connect()
-            .map_err(|failure| error("opening database", &failure))?;
-        let mut statement = connection
-            .prepare(DELETE_SQL)
-            .await
-            .map_err(|failure| error("preparing user delete", &failure))?;
-        let changed = statement
-            .execute((username,))
-            .await
-            .map_err(|failure| error("deleting user", &failure))?;
-        if changed == 0 {
-            return Err(format!("user not found: {username}"));
+    let db_path = database_path(path)?;
+    match target {
+        WriteTarget::Local => block_on(async move {
+            let database = Builder::new_local(db_path)
+                .build()
+                .await
+                .map_err(|failure| error("opening database", &failure))?;
+            let connection = database
+                .connect()
+                .map_err(|failure| error("opening database", &failure))?;
+            let mut statement = connection
+                .prepare(DELETE_SQL)
+                .await
+                .map_err(|failure| error("preparing user delete", &failure))?;
+            let changed = statement
+                .execute((username,))
+                .await
+                .map_err(|failure| error("deleting user", &failure))?;
+            if changed == 0 {
+                return Err(format!("user not found: {username}"));
+            }
+            connection
+                .cacheflush()
+                .map_err(|failure| error("closing database", &failure))?;
+            Ok(())
+        }),
+        WriteTarget::Synced {
+            database_url,
+            auth_token,
+        } => {
+            block_on(async move {
+                let database = SyncBuilder::new_remote(db_path)
+                    .with_remote_url(&database_url)
+                    .with_auth_token(auth_token.clone())
+                    .build()
+                    .await
+                    .map_err(|failure| {
+                        scrub(&auth_token, error("opening synced database", &failure))
+                    })?;
+                database.pull().await.map_err(|failure| {
+                    scrub(&auth_token, error("pulling remote changes", &failure))
+                })?;
+                let connection = database
+                    .connect()
+                    .await
+                    .map_err(|failure| scrub(&auth_token, error("opening database", &failure)))?;
+                let mut statement = connection.prepare(DELETE_SQL).await.map_err(|failure| {
+                    scrub(&auth_token, error("preparing user delete", &failure))
+                })?;
+                let changed = statement
+                    .execute((username,))
+                    .await
+                    .map_err(|failure| scrub(&auth_token, error("deleting user", &failure)))?;
+                if changed == 0 {
+                    return Err(format!("user not found: {username}"));
+                }
+                connection
+                    .cacheflush()
+                    .map_err(|failure| scrub(&auth_token, error("closing database", &failure)))?;
+                database.push().await.map_err(|failure| {
+                    scrub(&auth_token, error("pushing local changes", &failure))
+                })?;
+                Ok(())
+            })
         }
-        connection
-            .cacheflush()
-            .map_err(|failure| error("closing database", &failure))?;
-        Ok(())
-    })
+    }
 }
 
 /// Drives a Turso future to completion on the calling thread.
@@ -75,20 +192,6 @@ fn require_existing_database(path: &Path) -> Result<(), String> {
         Ok(_) => Err(format!("database path is not a file: {}", path.display())),
         Err(failure) => Err(format!("cannot open database: {failure}")),
     }
-}
-
-/// Turso records a mutation for replication only on a connection that enabled
-/// change capture. A plain local connection stores the row but leaves no change
-/// record, so the write would never reach the remote and would be dropped by the
-/// next pull. Refuse the write rather than lose it.
-fn refuse_synced_replica(path: &Path) -> Result<(), String> {
-    if sidecar(path, "-info").exists() {
-        return Err(format!(
-            "{} is a Turso synced replica; refusing to write without TURSO_DATABASE_URL",
-            path.display()
-        ));
-    }
-    Ok(())
 }
 
 fn sidecar(path: &Path, suffix: &str) -> std::path::PathBuf {
@@ -262,6 +365,47 @@ mod tests {
         let error = delete_user(&path, "bob").unwrap_err();
         assert!(error.contains("Turso synced replica"));
         assert_eq!(usernames(&path), ["bob"]);
+        std::fs::remove_file(sidecar(&path, "-info")).unwrap();
+        remove_database(&path);
+    }
+
+    #[test]
+    fn write_target_is_local_without_sidecar() {
+        let path = scratch_database(true);
+        assert!(matches!(
+            write_target(&path, None, None),
+            Ok(WriteTarget::Local)
+        ));
+        remove_database(&path);
+    }
+
+    #[test]
+    fn write_target_refuses_sidecar_without_credentials() {
+        let path = scratch_database(true);
+        File::create(sidecar(&path, "-info")).unwrap();
+        for (url, token) in [
+            (None, None),
+            (Some("https://example-remote.test".to_string()), None),
+            (None, Some("test-token".to_string())),
+        ] {
+            let error = write_target(&path, url, token).unwrap_err();
+            assert!(error.contains("Turso synced replica"));
+        }
+        std::fs::remove_file(sidecar(&path, "-info")).unwrap();
+        remove_database(&path);
+    }
+
+    #[test]
+    fn write_target_chooses_synced_when_sidecar_and_both_credentials_present() {
+        let path = scratch_database(true);
+        File::create(sidecar(&path, "-info")).unwrap();
+        let target = write_target(
+            &path,
+            Some("https://example-remote.test".to_string()),
+            Some("test-token".to_string()),
+        )
+        .unwrap();
+        assert!(matches!(target, WriteTarget::Synced { .. }));
         std::fs::remove_file(sidecar(&path, "-info")).unwrap();
         remove_database(&path);
     }
