@@ -19,8 +19,8 @@ if set -q _flag_help
     echo "  1. build deps for the host platform and load it as the local tag"
     echo "  2. build the app on top of the local deps image and smoke-test it"
     echo "  3. --push: build the remote platforms and push the remote tag"
-    echo "  defaults: --local-tag=blackkeys-ws:deps"
-    echo "            --remote-tag=ghcr.io/gcca/blackkeys:ws-deps"
+    echo "  defaults: --local-tag=blackkeys-assets:deps"
+    echo "            --remote-tag=ghcr.io/gcca/blackkeys:assets-deps"
     echo "            --platforms=linux/amd64,linux/arm64"
     exit 0
 end
@@ -32,18 +32,18 @@ or fail "could not resolve the script path"
 set -l script_dir (path dirname (path resolve "$script_file"))
 set -l repo_root (path dirname "$script_dir")
 
-for file in Dockerfile deps/Dockerfile pyproject.toml pdm.lock
+for file in Dockerfile deps/Dockerfile go.mod go.sum
     test -f "$repo_root/$file"
     or fail "$file was not found at $repo_root"
 end
 
-set -l local_tag blackkeys-ws:deps
+set -l local_tag blackkeys-assets:deps
 set -q _flag_local_tag; and set local_tag $_flag_local_tag
-set -l remote_tag ghcr.io/gcca/blackkeys:ws-deps
+set -l remote_tag ghcr.io/gcca/blackkeys:assets-deps
 set -q _flag_remote_tag; and set remote_tag $_flag_remote_tag
 set -l platforms linux/amd64,linux/arm64
 set -q _flag_platforms; and set platforms $_flag_platforms
-set -l check_tag blackkeys-ws:deps-check
+set -l check_tag blackkeys-assets:deps-check
 
 set -l host_platform
 switch (uname -m)
@@ -55,12 +55,12 @@ switch (uname -m)
         fail "unsupported host architecture: "(uname -m)
 end
 
-set -l lock_digest (shasum -a 256 "$repo_root/pdm.lock" | string split -f1 ' ')
-or fail "could not hash pdm.lock"
+set -l lock_digest (shasum -a 256 "$repo_root/go.sum" | string split -f1 ' ')
+or fail "could not hash go.sum"
 
 set -l labels \
     --label org.opencontainers.image.source=https://github.com/gcca/blackkeys \
-    --label org.opencontainers.image.revision=pdm.lock-sha256:$lock_digest
+    --label org.opencontainers.image.revision=go.sum-sha256:$lock_digest
 
 step "building $local_tag for $host_platform"
 docker buildx build \
@@ -81,12 +81,13 @@ docker build \
 or fail "app build on $local_tag failed"
 
 step "smoke-testing $check_tag"
-docker run --rm --entrypoint /app/.venv/bin/python $check_tag -c "import pylibmc, sanic, ws"
-and docker run --rm $check_tag ws:app exec --help >/dev/null
-set -l smoke $status
+# No env: the static binary must start and stop at settings, before any S3 call.
+set -l output (docker run --rm $check_tag 2>&1)
+set -l code $status
 docker image rm $check_tag >/dev/null
-test $smoke -eq 0
-or fail "smoke test on $check_tag failed"
+test $code -eq 1
+and string match -q '*settings: AWS_ACCESS_KEY_ID must not be empty*' -- $output
+or fail "smoke test on $check_tag failed (exit $code): $output"
 
 if not set -q _flag_push
     step "done: $local_tag"

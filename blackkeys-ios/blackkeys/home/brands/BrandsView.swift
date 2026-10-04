@@ -60,7 +60,7 @@ struct BrandsView: View {
         .task(id: token) {
             await loadBrands()
         }
-        .sheet(item: $selectedBrand) { brand in
+        .fullScreenCover(item: $selectedBrand) { brand in
             BrandView(item: BrandPresentation(brand: brand))
         }
     }

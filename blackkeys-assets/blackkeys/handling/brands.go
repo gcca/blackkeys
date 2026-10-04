@@ -42,8 +42,8 @@ type amenityRecord struct {
 }
 
 type storeRecord struct {
-	ID   int32  `parquet:"id,optional"`
-	Name string `parquet:"name,optional"`
+	ID   int32  `parquet:"kiosk_id,optional"`
+	Name string `parquet:"display_name,optional"`
 }
 
 func (r brandRecord) brand() *assetsv1.Brand {
@@ -214,7 +214,7 @@ func (s *BrandsService) List(context.Context, *assetsv1.ListRequest) (*assetsv1.
 // (handling/brand/routes/common.cpp) — the two codebases independently agree
 // on this key shape; keep them identical.
 func brandImageKey(name, kind string) string {
-	return "brands/name=" + name + "/" + kind + ".png"
+	return "brands/name=" + name + "/" + kind + ".webp"
 }
 
 // validBrandName mirrors blackkeys-assets-bo's RejectSegment: a brand name

@@ -111,7 +111,7 @@ bool IsImageKind(std::string_view kind) {
 }
 
 std::string BrandImageKey(const std::string &name, std::string_view kind) {
-  return "brands/name=" + name + "/" + std::string(kind) + ".png";
+  return "brands/name=" + name + "/" + std::string(kind) + ".webp";
 }
 
 std::string EncodePathSegment(const std::string &value) {
@@ -124,18 +124,14 @@ std::string EncodePathSegment(const std::string &value) {
   return encoded;
 }
 
-std::optional<std::string> ValidatePngUpload(std::string_view bytes) {
-  if (bytes.size() > kMaxPngBytes) {
-    return "PNG images must be at most 10 MiB";
+std::optional<std::string> ValidateWebpUpload(std::string_view bytes) {
+  if (bytes.size() > kMaxImageBytes) {
+    return "WebP images must be at most 10 MiB";
   }
-  constexpr unsigned char signature[] = {0x89, 0x50, 0x4e, 0x47,
-                                         0x0d, 0x0a, 0x1a, 0x0a};
-  if (bytes.size() < std::size(signature) ||
-      !std::equal(std::begin(signature), std::end(signature), bytes.begin(),
-                  [](unsigned char expected, char actual) {
-                    return expected == static_cast<unsigned char>(actual);
-                  })) {
-    return "uploaded images must have a valid PNG signature";
+  // A WebP file is a RIFF container: "RIFF", 4-byte length, then "WEBP".
+  if (bytes.size() < 12 || bytes.substr(0, 4) != "RIFF" ||
+      bytes.substr(8, 4) != "WEBP") {
+    return "uploaded images must have a valid WebP signature";
   }
   return std::nullopt;
 }

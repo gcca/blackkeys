@@ -102,7 +102,7 @@ ParseUpdateRequest(const drogon::HttpRequestPtr &req, const Callback &callback) 
       continue;
     }
     const auto bytes = file.fileContent();
-    if (const auto reason = ValidatePngUpload(bytes)) {
+    if (const auto reason = ValidateWebpUpload(bytes)) {
       SendError(callback, drogon::k400BadRequest, "Bad upload", *reason);
       return std::nullopt;
     }
@@ -317,7 +317,7 @@ void ApplyUpdate(const drogon::HttpRequestPtr &req, const Callback &callback,
     for (const auto &image : rename_images) {
       staged_keys.push_back(image.key);
       const auto put = assetsbo::storage::PutObject(image.key, image.body,
-                                                    "image/png");
+                                                    kImageContentType);
       if (!put.error.empty()) {
         RemoveStagedImages(staged_keys);
         SendError(callback, drogon::k502BadGateway, "Put failed", put.error);
@@ -380,7 +380,7 @@ void ApplyUpdate(const drogon::HttpRequestPtr &req, const Callback &callback,
         continue;
       }
       const auto put = assetsbo::storage::PutObject(
-          BrandImageKey(old_name, kind), upload->second, "image/png");
+          BrandImageKey(old_name, kind), upload->second, kImageContentType);
       if (!put.error.empty()) {
         SendError(callback, drogon::k502BadGateway, "Put failed", put.error);
         return;

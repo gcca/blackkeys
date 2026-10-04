@@ -32,7 +32,7 @@ fn void test_defaults_target_a_local_cache() @test
 
 	test::eq(settings.nodes, "127.0.0.1:11211,127.0.0.1:11212");
 	test::@check(settings.interval_seconds == 60);
-	test::@check(settings.expiration_seconds == 0);
+	test::@check(settings.expiration_seconds == 210);
 	test::@check(settings.memory_kib == 65536);
 	test::@check(settings.iterations == 3);
 	test::@check(settings.lanes == 4);
@@ -43,6 +43,16 @@ fn void test_defaults_target_a_local_cache() @test
 	test::eq(settings.mq_vhost, "/");
 	test::eq(settings.mq_queue, "blackkeys-signup");
 	test::eq(settings.mq_hydration_queue, "blackkeys-hydration");
+}
+
+fn void test_zero_expiration_falls_back_to_the_default() @test
+{
+	clear();
+	env::set_var("HYDRANT_EXPIRATION_SECONDS", "0");
+	defer clear();
+
+	conf::Settings settings = conf::from_env(tmem);
+	test::@check(settings.expiration_seconds == 210);
 }
 
 fn void test_environment_overrides_every_field() @test

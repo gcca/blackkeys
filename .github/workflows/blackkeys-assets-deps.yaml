@@ -1,4 +1,4 @@
-name: blackkeys-ws deps
+name: blackkeys-assets deps
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/gcca/blackkeys
-  TAG: ws-deps
+  TAG: assets-deps
 
 jobs:
   image:
@@ -27,9 +27,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Hash pdm.lock
+      - name: Hash go.sum
         shell: bash
-        run: echo "LOCK_SHA256=$(sha256sum blackkeys-ws/pdm.lock | cut -d' ' -f1)" >> "$GITHUB_ENV"
+        run: echo "LOCK_SHA256=$(sha256sum blackkeys-assets/go.sum | cut -d' ' -f1)" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -44,8 +44,8 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: blackkeys-ws
-          file: blackkeys-ws/deps/Dockerfile
+          context: blackkeys-assets
+          file: blackkeys-assets/deps/Dockerfile
           target: deps
           push: true
           platforms: linux/${{ matrix.arch }}
@@ -53,9 +53,9 @@ jobs:
           tags: ${{ env.IMAGE }}:${{ env.TAG }}-${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=pdm.lock-sha256:${{ env.LOCK_SHA256 }}
-          cache-from: type=gha,scope=blackkeys-ws-deps-${{ matrix.arch }}
-          cache-to: type=gha,scope=blackkeys-ws-deps-${{ matrix.arch }},mode=max
+            org.opencontainers.image.revision=go.sum-sha256:${{ env.LOCK_SHA256 }}
+          cache-from: type=gha,scope=blackkeys-assets-deps-${{ matrix.arch }}
+          cache-to: type=gha,scope=blackkeys-assets-deps-${{ matrix.arch }},mode=max
 
   manifest:
     name: Publish Multi-Arch Deps Manifest

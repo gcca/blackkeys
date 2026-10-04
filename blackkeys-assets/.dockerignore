@@ -7,3 +7,5 @@ gen/
 .ninja_log
 CTX.md
 LICENSE
+deps/
+scripts/

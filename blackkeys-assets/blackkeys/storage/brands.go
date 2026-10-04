@@ -66,7 +66,7 @@ func FetchBrandsSnapshot(ctx context.Context, settings core.Settings) ([]byte, e
 	return data, nil
 }
 
-const defaultImageContentType = "image/png"
+const defaultImageContentType = "image/webp"
 
 // FetchImage fetches a single object from bucket/key using an already
 // constructed client (see NewS3Client), for repeated per-request reads (e.g.

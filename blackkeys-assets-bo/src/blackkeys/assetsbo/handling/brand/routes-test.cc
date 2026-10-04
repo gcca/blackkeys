@@ -55,8 +55,8 @@ drogon::HttpRequestPtr MakeUploadRequest(const std::string &field,
   }
   request_body += "--" + boundary + "\r\n"
                   "Content-Disposition: form-data; name=\"" +
-      field + "\"; filename=\"image.png\"\r\n"
-              "Content-Type: image/png\r\n\r\n";
+      field + "\"; filename=\"image.webp\"\r\n"
+              "Content-Type: image/webp\r\n\r\n";
   request_body += body;
   request_body += "\r\n--" + boundary + "--\r\n";
 
@@ -66,6 +66,15 @@ drogon::HttpRequestPtr MakeUploadRequest(const std::string &field,
   req->addHeader("content-type", "multipart/form-data; boundary=" + boundary);
   req->setBody(std::move(request_body));
   return req;
+}
+
+std::string WebpBytes(std::size_t size = 12) {
+  std::string bytes(size, '\0');
+  if (size >= 12) {
+    bytes.replace(0, 4, "RIFF");
+    bytes.replace(8, 4, "WEBP");
+  }
+  return bytes;
 }
 
 std::string PngBytes(std::size_t size = 8) {
@@ -366,11 +375,11 @@ TEST(BrandsRoutes, ImageReturnsNotFoundForMissingObject) {
   EXPECT_EQ(response->statusCode(), drogon::k404NotFound);
 }
 
-TEST(BrandsRoutes, ImageReturnsPngWithoutCaching) {
+TEST(BrandsRoutes, ImageReturnsWebpWithoutCaching) {
   MemoryObjectStore store;
-  const auto png = PngBytes(24);
+  const auto webp = WebpBytes(24);
   store.objects[BrandImageKey("adidas", "logo")] = {
-      png, "image/png", "Tue, 29 Sep 2026 18:42:15 GMT"};
+      webp, "image/webp", "Tue, 29 Sep 2026 18:42:15 GMT"};
   ScopedObjectStore scoped(store);
   Brands controller;
   drogon::HttpResponsePtr response;
@@ -382,8 +391,8 @@ TEST(BrandsRoutes, ImageReturnsPngWithoutCaching) {
 
   ASSERT_TRUE(response);
   EXPECT_EQ(response->statusCode(), drogon::k200OK);
-  EXPECT_EQ(response->body(), png);
-  EXPECT_EQ(response->contentTypeString(), "image/png");
+  EXPECT_EQ(response->body(), webp);
+  EXPECT_EQ(response->contentTypeString(), "image/webp");
   EXPECT_EQ(response->getHeader("Cache-Control"), "no-store");
   EXPECT_EQ(response->getHeader("Content-Length"), "24");
   EXPECT_EQ(response->getHeader("Last-Modified"),
@@ -392,8 +401,8 @@ TEST(BrandsRoutes, ImageReturnsPngWithoutCaching) {
 
 TEST(BrandsRoutes, ImageOmitsUnavailableLastModified) {
   MemoryObjectStore store;
-  const auto png = PngBytes(12);
-  store.objects[BrandImageKey("adidas", "picture")] = {png, "image/png"};
+  const auto webp = WebpBytes(12);
+  store.objects[BrandImageKey("adidas", "picture")] = {webp, "image/webp"};
   ScopedObjectStore scoped(store);
   Brands controller;
   drogon::HttpResponsePtr response;
@@ -405,7 +414,7 @@ TEST(BrandsRoutes, ImageOmitsUnavailableLastModified) {
 
   ASSERT_TRUE(response);
   EXPECT_EQ(response->statusCode(), drogon::k200OK);
-  EXPECT_EQ(response->body(), png);
+  EXPECT_EQ(response->body(), webp);
   EXPECT_EQ(response->getHeader("Content-Length"), "12");
   EXPECT_TRUE(response->getHeader("Last-Modified").empty());
 }
@@ -514,7 +523,7 @@ TEST(BrandsRoutes, RenameRejectsDestinationImageCollisionBeforeWrites) {
   MemoryObjectStore store;
   store.objects[kBrandsKey] = {BuildBrandsParquet({"old"}),
                                "application/octet-stream"};
-  store.objects[BrandImageKey("new", "logo")] = {PngBytes(), "image/png"};
+  store.objects[BrandImageKey("new", "logo")] = {WebpBytes(), "image/webp"};
 
   const auto response =
       UpdateResponse(store, MakeFormRequest({{"name", "new"}}), "old");
@@ -571,10 +580,10 @@ TEST(BrandsRoutes, RenameWithMissingImagesMovesIdentityAndOverrides) {
 
 TEST(BrandsRoutes, RenameStagesOldImageBeforeIdentityWrites) {
   MemoryObjectStore store;
-  const auto png = PngBytes(32);
+  const auto webp = WebpBytes(32);
   store.objects[kBrandsKey] = {BuildBrandsParquet({"old"}),
                                "application/octet-stream"};
-  store.objects[BrandImageKey("old", "logo")] = {png, "image/png"};
+  store.objects[BrandImageKey("old", "logo")] = {webp, "image/webp"};
 
   const auto response =
       UpdateResponse(store, MakeFormRequest({{"name", "new"}}), "old");
@@ -583,20 +592,20 @@ TEST(BrandsRoutes, RenameStagesOldImageBeforeIdentityWrites) {
   ASSERT_EQ(response->statusCode(), drogon::k302Found);
   ASSERT_GE(store.puts.size(), 4u);
   EXPECT_EQ(store.puts[0].key, BrandImageKey("new", "logo"));
-  EXPECT_EQ(store.puts[0].body, png);
-  EXPECT_EQ(store.puts[0].content_type, "image/png");
+  EXPECT_EQ(store.puts[0].body, webp);
+  EXPECT_EQ(store.puts[0].content_type, "image/webp");
   EXPECT_EQ(store.puts[1].key, kOverridesKey);
   EXPECT_EQ(store.puts[2].key, kBrandsKey);
   EXPECT_EQ(store.puts[3].key, kOverridesKey);
   EXPECT_FALSE(store.objects.contains(BrandImageKey("old", "logo")));
-  EXPECT_EQ(store.objects.at(BrandImageKey("new", "logo")).body, png);
+  EXPECT_EQ(store.objects.at(BrandImageKey("new", "logo")).body, webp);
 }
 
 TEST(BrandsRoutes, RenameRollsBackStagedImagesWhenTransitionalWriteFails) {
   MemoryObjectStore store;
   store.objects[kBrandsKey] = {BuildBrandsParquet({"old"}),
                                "application/octet-stream"};
-  store.objects[BrandImageKey("old", "logo")] = {PngBytes(16), "image/png"};
+  store.objects[BrandImageKey("old", "logo")] = {WebpBytes(16), "image/webp"};
   store.put_error_on_call[{kOverridesKey, 1}] = "injected failure";
 
   const auto response =
@@ -616,7 +625,7 @@ TEST(BrandsRoutes, RenameRollsBackStagedImagesWhenParquetWriteFails) {
   MemoryObjectStore store;
   store.objects[kBrandsKey] = {BuildBrandsParquet({"old"}),
                                "application/octet-stream"};
-  store.objects[BrandImageKey("old", "logo")] = {PngBytes(16), "image/png"};
+  store.objects[BrandImageKey("old", "logo")] = {WebpBytes(16), "image/webp"};
   store.put_error_on_call[{kBrandsKey, 1}] = "injected failure";
 
   const auto response =
@@ -634,10 +643,10 @@ TEST(BrandsRoutes, RenameRollsBackStagedImagesWhenParquetWriteFails) {
 
 TEST(BrandsRoutes, RenameCleanupFailuresStillRedirectToFunctionalNewBrand) {
   MemoryObjectStore store;
-  const auto png = PngBytes(16);
+  const auto webp = WebpBytes(16);
   store.objects[kBrandsKey] = {BuildBrandsParquet({"old"}),
                                "application/octet-stream"};
-  store.objects[BrandImageKey("old", "logo")] = {png, "image/png"};
+  store.objects[BrandImageKey("old", "logo")] = {webp, "image/webp"};
   store.put_error_on_call[{kOverridesKey, 2}] = "injected final failure";
   store.delete_errors[BrandImageKey("old", "logo")] =
       "injected delete failure";
@@ -652,7 +661,7 @@ TEST(BrandsRoutes, RenameCleanupFailuresStillRedirectToFunctionalNewBrand) {
       store.objects.at(kBrandsKey).body);
   ASSERT_TRUE(parsed_table.error.empty()) << parsed_table.error;
   EXPECT_EQ(parsed_table.table.rows[0][0], "new");
-  EXPECT_EQ(store.objects.at(BrandImageKey("new", "logo")).body, png);
+  EXPECT_EQ(store.objects.at(BrandImageKey("new", "logo")).body, webp);
   EXPECT_TRUE(store.objects.contains(BrandImageKey("old", "logo")));
   const auto transitional = blackkeys::assetsbo::storage::ParseOverrides(
       store.objects.at(kOverridesKey).body);
@@ -663,11 +672,11 @@ TEST(BrandsRoutes, RenameCleanupFailuresStillRedirectToFunctionalNewBrand) {
 
 TEST(BrandsRoutes, RenameUsesMultipartFieldsAndUploadedImage) {
   MemoryObjectStore store;
-  const auto uploaded = PngBytes(40);
+  const auto uploaded = WebpBytes(40);
   store.objects[kBrandsKey] = {BuildBrandsParquet({"old"}),
                                "application/octet-stream"};
-  store.objects[BrandImageKey("old", "picture")] = {PngBytes(24),
-                                                       "image/png"};
+  store.objects[BrandImageKey("old", "picture")] = {WebpBytes(24),
+                                                       "image/webp"};
 
   const auto response = UpdateResponse(
       store,
@@ -684,22 +693,22 @@ TEST(BrandsRoutes, RenameUsesMultipartFieldsAndUploadedImage) {
   EXPECT_FALSE(store.objects.contains(BrandImageKey("old", "picture")));
 }
 
-TEST(BrandsRoutes, UploadParsesMultipartAndWritesPngAfterFieldWrites) {
+TEST(BrandsRoutes, UploadParsesMultipartAndWritesWebpAfterFieldWrites) {
   MemoryObjectStore store;
-  const auto png = PngBytes(64);
+  const auto webp = WebpBytes(64);
   store.objects[kBrandsKey] = {BuildBrandsParquet({"old"}),
                                "application/octet-stream"};
 
   const auto response =
-      UpdateResponse(store, MakeUploadRequest("logo_file", png), "old");
+      UpdateResponse(store, MakeUploadRequest("logo_file", webp), "old");
 
   ASSERT_TRUE(response);
   ASSERT_EQ(response->statusCode(), drogon::k302Found);
   EXPECT_EQ(response->getHeader("Location"), "/v1/brand/old/details");
   ASSERT_TRUE(store.objects.contains(BrandImageKey("old", "logo")));
-  EXPECT_EQ(store.objects.at(BrandImageKey("old", "logo")).body, png);
+  EXPECT_EQ(store.objects.at(BrandImageKey("old", "logo")).body, webp);
   EXPECT_EQ(store.objects.at(BrandImageKey("old", "logo")).content_type,
-            "image/png");
+            "image/webp");
   ASSERT_EQ(store.puts.size(), 1u);
   EXPECT_EQ(store.puts[0].key, BrandImageKey("old", "logo"));
 }
@@ -708,18 +717,29 @@ TEST(BrandsRoutes, UploadRejectsUnknownFileFieldBeforeStorageAccess) {
   MemoryObjectStore store;
 
   const auto response = UpdateResponse(
-      store, MakeUploadRequest("banner_file", PngBytes()), "old");
+      store, MakeUploadRequest("banner_file", WebpBytes()), "old");
 
   ASSERT_TRUE(response);
   EXPECT_EQ(response->statusCode(), drogon::k400BadRequest);
   EXPECT_TRUE(store.operations.empty());
 }
 
-TEST(BrandsRoutes, UploadRejectsInvalidPngBeforeStorageAccess) {
+TEST(BrandsRoutes, UploadRejectsInvalidWebpBeforeStorageAccess) {
   MemoryObjectStore store;
 
   const auto response = UpdateResponse(
-      store, MakeUploadRequest("logo_file", "not a png"), "old");
+      store, MakeUploadRequest("logo_file", "not a webp"), "old");
+
+  ASSERT_TRUE(response);
+  EXPECT_EQ(response->statusCode(), drogon::k400BadRequest);
+  EXPECT_TRUE(store.operations.empty());
+}
+
+TEST(BrandsRoutes, UploadRejectsPngBeforeStorageAccess) {
+  MemoryObjectStore store;
+
+  const auto response = UpdateResponse(
+      store, MakeUploadRequest("logo_file", PngBytes(64)), "old");
 
   ASSERT_TRUE(response);
   EXPECT_EQ(response->statusCode(), drogon::k400BadRequest);
@@ -728,10 +748,10 @@ TEST(BrandsRoutes, UploadRejectsInvalidPngBeforeStorageAccess) {
 
 TEST(BrandsRoutes, EmptyUploadPreservesExistingImage) {
   MemoryObjectStore store;
-  const auto existing = PngBytes(20);
+  const auto existing = WebpBytes(20);
   store.objects[kBrandsKey] = {BuildBrandsParquet({"old"}),
                                "application/octet-stream"};
-  store.objects[BrandImageKey("old", "logo")] = {existing, "image/png"};
+  store.objects[BrandImageKey("old", "logo")] = {existing, "image/webp"};
 
   const auto response =
       UpdateResponse(store, MakeUploadRequest("logo_file", ""), "old");

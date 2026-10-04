@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Detail screen opened when a brand card is tapped (see `BrandsView`'s
-/// `.sheet(item:)`). Reuses `BrandCardImage`'s cache-first loading for both
+/// `.fullScreenCover(item:)`). Reuses `BrandCardImage`'s cache-first loading for both
 /// the cover photo and the logo, and `BrandPresentation`'s deterministic tint
 /// so the detail screen matches the card the user tapped.
 struct BrandView: View {
@@ -9,21 +9,35 @@ struct BrandView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var isFavorite = false
+    @State private var topInset: CGFloat = 0
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                BrandCoverHeader(item: item, isFavorite: $isFavorite, onBack: { dismiss() })
+        ZStack {
+            // Stays inside the safe area (unlike the scroll view below), so its
+            // global `minY` is the status-bar/Dynamic Island height. The cover
+            // photo bleeds under that area and the overlaid buttons sit below it.
+            Color.clear
+                .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: {
+                    topInset = $0
+                }
 
-                BrandInfoSection(item: item)
-                    .padding(.top, BrandCoverHeader.logoOverlap)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    BrandCoverHeader(
+                        item: item,
+                        topInset: topInset,
+                        isFavorite: $isFavorite,
+                        onBack: { dismiss() }
+                    )
 
-                BrandDescriptionSection(brand: item.brand)
+                    BrandInfoSection(item: item)
+                        .padding(.top, BrandCoverHeader.logoOverlap)
+
+                    BrandDescriptionSection(brand: item.brand)
+                }
             }
+            .ignoresSafeArea(edges: .top)
         }
-        .ignoresSafeArea(edges: .top)
-        .presentationDragIndicator(.hidden)
-        .presentationDetents([.large])
     }
 }
 

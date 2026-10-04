@@ -10,6 +10,9 @@ struct BrandCoverHeader: View {
     static let logoOverlap: CGFloat = logoDiameter / 2 + 8
 
     let item: BrandPresentation
+    /// Height of the top safe area the cover photo extends under; the photo
+    /// grows by this much and the overlaid buttons sit below it.
+    let topInset: CGFloat
     @Binding var isFavorite: Bool
     let onBack: () -> Void
 
@@ -26,11 +29,12 @@ struct BrandCoverHeader: View {
     private var coverPhoto: some View {
         BrandCardImage(url: item.brand.pictureUrl, tint: item.tint)
             .frame(maxWidth: .infinity)
-            .frame(height: Self.coverHeight)
+            .frame(height: Self.coverHeight + topInset)
             .clipped()
             .overlay(alignment: .topLeading) {
                 circleButton(systemImage: "chevron.left", accessibilityIdentifier: "brandViewBackButton", action: onBack)
                     .padding(.leading)
+                    .padding(.top, topInset)
             }
             .overlay(alignment: .topTrailing) {
                 circleButton(
@@ -40,6 +44,7 @@ struct BrandCoverHeader: View {
                     isFavorite.toggle()
                 }
                 .padding(.trailing)
+                .padding(.top, topInset)
             }
     }
 

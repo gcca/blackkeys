@@ -13,7 +13,7 @@
 <%c++ for (const auto &[kind_value, label_value] : images) {
   const auto kind = drogon::HttpViewData::htmlTranslate(kind_value);
   const auto label = drogon::HttpViewData::htmlTranslate(label_value);
-  const auto filename = drogon::HttpViewData::htmlTranslate(kind_value + ".png");
+  const auto filename = drogon::HttpViewData::htmlTranslate(kind_value + ".webp");
   const auto image_url = drogon::HttpViewData::htmlTranslate(
       "/v1/brand/" + encoded_brand_name + "/image/" + kind_value);
   const auto input_id = drogon::HttpViewData::htmlTranslate(kind_value + "_file");
@@ -45,7 +45,7 @@
 <%c++ if (uploads_enabled) { %>
       <fieldset class="fieldset">
         <label class="fieldset-legend" for="{%input_id%}">Replace {%label%}</label>
-        <input id="{%input_id%}" type="file" name="{%input_id%}" accept="image/png,.png" class="file-input w-full" disabled>
+        <input id="{%input_id%}" type="file" name="{%input_id%}" accept="image/webp,.webp" class="file-input w-full" disabled>
         <p data-image-error hidden role="alert" class="text-sm text-error"></p>
       </fieldset>
 <%c++ } %>
@@ -59,7 +59,8 @@
 
     var root = document.currentScript.previousElementSibling;
     var maximumBytes = 10 * 1024 * 1024;
-    var pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+    var riffTag = [82, 73, 70, 70];
+    var webpTag = [87, 69, 66, 80];
     var cards = Array.from(root.querySelectorAll("[data-brand-image]"));
 
     function field(card, name) {
@@ -135,7 +136,7 @@
 
     function renderMetadata(card, metadata) {
       field(card, "filename").textContent = metadata.filename;
-      field(card, "format").textContent = "PNG · " + (metadata.type || "image/png");
+      field(card, "format").textContent = "WebP · " + (metadata.type || "image/webp");
       field(card, "size").textContent = humanSize(metadata.size) + " (" +
           metadata.size.toLocaleString() + " bytes)";
       field(card, "dimensions").textContent = metadata.width.toLocaleString() + " × " +
@@ -209,7 +210,7 @@
             blob: blob,
             metadata: {
               filename: card.dataset.storedFilename,
-              type: blob.type || "image/png",
+              type: blob.type || "image/webp",
               size: blob.size,
               width: dimensions.width,
               height: dimensions.height,
@@ -230,10 +231,11 @@
       }
     }
 
-    async function hasPngSignature(file) {
-      if (file.size < pngSignature.length) return false;
-      var bytes = new Uint8Array(await file.slice(0, pngSignature.length).arrayBuffer());
-      return pngSignature.every(function (value, index) { return bytes[index] === value; });
+    async function hasWebpSignature(file) {
+      if (file.size < 12) return false;
+      var bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+      return riffTag.every(function (value, index) { return bytes[index] === value; }) &&
+          webpTag.every(function (value, index) { return bytes[8 + index] === value; });
     }
 
     function rejectSelection(card, input, message) {
@@ -255,12 +257,12 @@
           return;
         }
         if (file.size > maximumBytes) {
-          rejectSelection(card, input, "Choose a PNG no larger than 10 MiB.");
+          rejectSelection(card, input, "Choose a WebP image no larger than 10 MiB.");
           return;
         }
-        if (!(await hasPngSignature(file))) {
+        if (!(await hasWebpSignature(file))) {
           if (token !== state.selectionToken) return;
-          rejectSelection(card, input, "The selected file does not have a valid PNG signature.");
+          rejectSelection(card, input, "The selected file does not have a valid WebP signature.");
           return;
         }
 
@@ -274,7 +276,7 @@
           showPreview(card, url);
           renderMetadata(card, {
             filename: file.name,
-            type: "image/png",
+            type: "image/webp",
             size: file.size,
             width: dimensions.width,
             height: dimensions.height,
@@ -285,7 +287,7 @@
         } catch (error) {
           URL.revokeObjectURL(url);
           if (token === state.selectionToken) {
-            rejectSelection(card, input, "The selected PNG could not be decoded.");
+            rejectSelection(card, input, "The selected WebP image could not be decoded.");
           }
         }
       });

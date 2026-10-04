@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-ARG DEPS_IMAGE=ghcr.io/gcca/blackkeys-ws:deps
+ARG DEPS_IMAGE=ghcr.io/gcca/blackkeys:ws-deps
 ARG NODE_EXPORTER_IMAGE=quay.io/prometheus/node-exporter:v1.11.0
 ARG STATIC_IMAGE=cgr.dev/chainguard/static:latest
 

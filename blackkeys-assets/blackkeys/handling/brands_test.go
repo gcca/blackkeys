@@ -245,32 +245,32 @@ func TestValidBrandNameRejectsUnsafeSegments(t *testing.T) {
 }
 
 func TestBrandImageKeyMatchesAssetsBoConvention(t *testing.T) {
-	if got, want := brandImageKey("adidas", "logo"), "brands/name=adidas/logo.png"; got != want {
+	if got, want := brandImageKey("adidas", "logo"), "brands/name=adidas/logo.webp"; got != want {
 		t.Errorf("brandImageKey: got %q, want %q", got, want)
 	}
 }
 
 func TestLogoReturnsBytesAndContentType(t *testing.T) {
-	images := &fakeImageStore{data: []byte("png-bytes"), contentType: "image/png"}
+	images := &fakeImageStore{data: []byte("webp-bytes"), contentType: "image/webp"}
 	service := testBrandsServiceWithImages(images)
 
 	response, err := service.Logo(t.Context(), &assetsv1.ImageRequest{Name: "adidas"})
 	if err != nil {
 		t.Fatalf("Logo: %v", err)
 	}
-	if string(response.GetData()) != "png-bytes" {
-		t.Errorf("data: got %q, want %q", response.GetData(), "png-bytes")
+	if string(response.GetData()) != "webp-bytes" {
+		t.Errorf("data: got %q, want %q", response.GetData(), "webp-bytes")
 	}
-	if response.GetContentType() != "image/png" {
-		t.Errorf("content type: got %q, want image/png", response.GetContentType())
+	if response.GetContentType() != "image/webp" {
+		t.Errorf("content type: got %q, want image/webp", response.GetContentType())
 	}
-	if want := []string{"brands/name=adidas/logo.png"}; len(images.calls) != 1 || images.calls[0] != want[0] {
+	if want := []string{"brands/name=adidas/logo.webp"}; len(images.calls) != 1 || images.calls[0] != want[0] {
 		t.Errorf("fetched keys: got %v, want %v", images.calls, want)
 	}
 }
 
 func TestPictureReturnsBytesAndContentType(t *testing.T) {
-	images := &fakeImageStore{data: []byte("picture-bytes"), contentType: "image/png"}
+	images := &fakeImageStore{data: []byte("picture-bytes"), contentType: "image/webp"}
 	service := testBrandsServiceWithImages(images)
 
 	response, err := service.Picture(t.Context(), &assetsv1.ImageRequest{Name: "adidas"})
@@ -280,7 +280,7 @@ func TestPictureReturnsBytesAndContentType(t *testing.T) {
 	if string(response.GetData()) != "picture-bytes" {
 		t.Errorf("data: got %q, want %q", response.GetData(), "picture-bytes")
 	}
-	if want := []string{"brands/name=adidas/picture.png"}; len(images.calls) != 1 || images.calls[0] != want[0] {
+	if want := []string{"brands/name=adidas/picture.webp"}; len(images.calls) != 1 || images.calls[0] != want[0] {
 		t.Errorf("fetched keys: got %v, want %v", images.calls, want)
 	}
 }

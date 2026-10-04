@@ -21,7 +21,7 @@ void Brands::BrandsImage(const drogon::HttpRequestPtr &, Callback &&callback,
   const auto got = assetsbo::storage::GetObject(BrandImageKey(name, kind));
   if (got.not_found) {
     SendError(callback, drogon::k404NotFound, "Image not found",
-              kind + ".png is not available for this brand");
+              kind + ".webp is not available for this brand");
     return;
   }
   if (!got.error.empty()) {
@@ -31,7 +31,7 @@ void Brands::BrandsImage(const drogon::HttpRequestPtr &, Callback &&callback,
 
   auto response = drogon::HttpResponse::newHttpResponse();
   response->setStatusCode(drogon::k200OK);
-  response->setContentTypeString("image/png");
+  response->setContentTypeString(kImageContentType);
   response->addHeader("Cache-Control", "no-store");
   response->addHeader("Content-Length", std::to_string(got.body.size()));
   if (got.last_modified) {

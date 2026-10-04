@@ -12,8 +12,17 @@ using blackkeys::assetsbo::handling::brand::BrandImageKey;
 using blackkeys::assetsbo::handling::brand::EncodePathSegment;
 using blackkeys::assetsbo::handling::brand::ApplyOverrides;
 using blackkeys::assetsbo::handling::brand::IsOverridden;
-using blackkeys::assetsbo::handling::brand::ValidatePngUpload;
-using blackkeys::assetsbo::handling::brand::kMaxPngBytes;
+using blackkeys::assetsbo::handling::brand::ValidateWebpUpload;
+using blackkeys::assetsbo::handling::brand::kMaxImageBytes;
+
+std::string WebpBytes(std::size_t size) {
+  std::string bytes(size, '\0');
+  if (size >= 12) {
+    bytes.replace(0, 4, "RIFF");
+    bytes.replace(8, 4, "WEBP");
+  }
+  return bytes;
+}
 
 std::string PngBytes(std::size_t size) {
   std::string bytes(size, '\0');
@@ -26,9 +35,9 @@ std::string PngBytes(std::size_t size) {
 
 TEST(BrandImages, BuildsFixedKeys) {
   EXPECT_EQ(BrandImageKey("acme", "logo"),
-            "brands/name=acme/logo.png");
+            "brands/name=acme/logo.webp");
   EXPECT_EQ(BrandImageKey("new brand", "picture"),
-            "brands/name=new brand/picture.png");
+            "brands/name=new brand/picture.webp");
 }
 
 TEST(BrandImages, EncodesSpacesForPathSegments) {
@@ -36,17 +45,22 @@ TEST(BrandImages, EncodesSpacesForPathSegments) {
   EXPECT_EQ(EncodePathSegment("a+b"), "a%2Bb");
 }
 
-TEST(BrandImages, AcceptsPngAtTenMiBBoundary) {
-  EXPECT_FALSE(ValidatePngUpload(PngBytes(kMaxPngBytes)).has_value());
+TEST(BrandImages, AcceptsWebpAtTenMiBBoundary) {
+  EXPECT_FALSE(ValidateWebpUpload(WebpBytes(kMaxImageBytes)).has_value());
 }
 
-TEST(BrandImages, RejectsPngOverTenMiBBoundary) {
-  EXPECT_TRUE(ValidatePngUpload(PngBytes(kMaxPngBytes + 1)).has_value());
+TEST(BrandImages, RejectsWebpOverTenMiBBoundary) {
+  EXPECT_TRUE(ValidateWebpUpload(WebpBytes(kMaxImageBytes + 1)).has_value());
 }
 
 TEST(BrandImages, RejectsInvalidOrShortSignature) {
-  EXPECT_TRUE(ValidatePngUpload("not a png").has_value());
-  EXPECT_TRUE(ValidatePngUpload("\x89PNG").has_value());
+  EXPECT_TRUE(ValidateWebpUpload("not a webp").has_value());
+  EXPECT_TRUE(ValidateWebpUpload("RIFF\0\0\0\0WEB").has_value());
+  EXPECT_TRUE(ValidateWebpUpload("RIFF\0\0\0\0WAVE").has_value());
+}
+
+TEST(BrandImages, RejectsPngUpload) {
+  EXPECT_TRUE(ValidateWebpUpload(PngBytes(64)).has_value());
 }
 
 TEST(BrandOverrides, LegacyNameOverrideCannotChangeParquetIdentity) {

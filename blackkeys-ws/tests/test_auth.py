@@ -15,6 +15,7 @@ from blackkeys.backends.stores.cache import (
     EncodeUserAuth,
     MakeAuthCache,
     ReadUserAuth,
+    USER_AUTH_CACHE_TTL_SECONDS,
     UserAuthKey,
     WriteUserAuth,
 )
@@ -259,6 +260,9 @@ class CachedUserAuthTests(unittest.TestCase):
     def TestUsesExpectedCacheKey(self) -> None:
         self.assertEqual(UserAuthKey("alice"), "auth:user:alice")
 
+    def TestUserAuthCacheTtlIsThreeAndAHalfMinutes(self) -> None:
+        self.assertEqual(USER_AUTH_CACHE_TTL_SECONDS, 210)
+
     def TestReadsCachedUserWithoutValidatingThePassword(self) -> None:
         cache = MagicMock()
         client = cache.reserve.return_value.__enter__.return_value
@@ -282,8 +286,10 @@ class CachedUserAuthTests(unittest.TestCase):
         client.set.assert_not_called()
         client.disconnect_all.assert_not_called()
         for node in ("cache-b:11211", "cache-c:11211"):
-            key, encoded = cache.node_clients[node].set.call_args.args
+            call = cache.node_clients[node].set.call_args
+            key, encoded = call.args
             self.assertEqual(key, "auth:user:alice")
+            self.assertEqual(call.kwargs, {"time": 210})
             self.assertEqual(DecodeUserAuth(encoded), user_auth)
         cache.node_clients["cache-a:11211"].set.assert_not_called()
 

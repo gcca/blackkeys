@@ -22,6 +22,7 @@ from blackkeys.schemas.UserAuth import (
 DEFAULT_REPLICATION = 1
 AUTH_USER_KEY_PREFIX = "auth:user:"
 AUTH_CACHE_POOL_SIZE = 4
+USER_AUTH_CACHE_TTL_SECONDS = 210
 USER_AUTH_IDENTIFIER = b"BKUA"
 EVENTS_LIST_CACHE_KEY = "blackkeys-events-list"
 EVENTS_CACHE_POOL_SIZE = 4
@@ -172,6 +173,7 @@ def WriteUserAuth(cache: pylibmc.ClientPool, user_auth: CachedUserAuth) -> bool:
         cache,
         UserAuthKey(user_auth.username),
         EncodeUserAuth(user_auth.username, user_auth.password),
+        time=USER_AUTH_CACHE_TTL_SECONDS,
     )
 
 

@@ -4,7 +4,7 @@ import std::os::env;
 
 const String DEFAULT_NODES              = "127.0.0.1:11211,127.0.0.1:11212";
 const uint DEFAULT_INTERVAL_SECONDS     = 60;
-const uint DEFAULT_EXPIRATION_SECONDS   = 0;
+const uint DEFAULT_EXPIRATION_SECONDS   = 210;
 const uint DEFAULT_MEMORY_KIB           = 65536;
 const uint DEFAULT_ITERATIONS           = 3;
 const uint DEFAULT_LANES                = 4;
@@ -55,7 +55,11 @@ fn uint read_interval_seconds() @private
 	return value ? value : DEFAULT_INTERVAL_SECONDS;
 }
 
-fn uint read_expiration_seconds() @private => read_uint("HYDRANT_EXPIRATION_SECONDS", DEFAULT_EXPIRATION_SECONDS);
+fn uint read_expiration_seconds() @private
+{
+	uint value = read_uint("HYDRANT_EXPIRATION_SECONDS", DEFAULT_EXPIRATION_SECONDS);
+	return value ? value : DEFAULT_EXPIRATION_SECONDS;
+}
 
 fn uint read_memory_kib() @private => read_uint("HYDRANT_ARGON2_MEMORY_KIB", DEFAULT_MEMORY_KIB);
 
