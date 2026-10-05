@@ -34,7 +34,7 @@ RUN apk add --no-cache \
     jsoncpp-dev \
     ldd-check \
     ninja-build \
-    openssl-dev \
+    openssl-4.0-dev \
     s2n-tls-dev \
     thrift-dev \
     util-linux-dev \
