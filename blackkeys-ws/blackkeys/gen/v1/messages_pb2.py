@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x11v1/messages.proto\x12\x13\x62lackkeys.assets.v1\"&\n\x07\x41menity\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"!\n\x05Store\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0c\n\x04name\x18\x02 \x01(\t\"\xf3\x01\n\x05\x42rand\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64isplay_name\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x05 \x01(\t\x12\x11\n\tis_active\x18\x06 \x01(\x08\x12\x10\n\x08kiosk_id\x18\x07 \x01(\x05\x12/\n\tamenities\x18\x08 \x03(\x0b\x32\x1c.blackkeys.assets.v1.Amenity\x12*\n\x06stores\x18\t \x03(\x0b\x32\x1a.blackkeys.assets.v1.Store\x12\x0c\n\x04tags\x18\n \x03(\tJ\x04\x08\x03\x10\x04J\x04\x08\x04\x10\x05R\x08logo_urlR\x0bpicture_url\"\r\n\x0bListRequest\":\n\x0cListResponse\x12*\n\x06\x62rands\x18\x01 \x03(\x0b\x32\x1a.blackkeys.assets.v1.Brand\"\x1c\n\x0cImageRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"3\n\rImageResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x14\n\x0c\x63ontent_type\x18\x02 \x01(\tBNZLgithub.com/plaza-san-miguel/blackkeys/blackkeys-assets/gen/assetsv1;assetsv1b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x11v1/messages.proto\x12\x13\x62lackkeys.assets.v1\"&\n\x07\x41menity\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"!\n\x05Store\x12\n\n\x02id\x18\x01 \x01(\x05\x12\x0c\n\x04name\x18\x02 \x01(\t\"\xd0\x01\n\x05\x42rand\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0c\x64isplay_name\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x11\n\tis_active\x18\x04 \x01(\x08\x12\x10\n\x08kiosk_id\x18\x05 \x01(\x05\x12/\n\tamenities\x18\x06 \x03(\x0b\x32\x1c.blackkeys.assets.v1.Amenity\x12*\n\x06stores\x18\x07 \x03(\x0b\x32\x1a.blackkeys.assets.v1.Store\x12\x0c\n\x04tags\x18\x08 \x03(\t\"\r\n\x0bListRequest\":\n\x0cListResponse\x12*\n\x06\x62rands\x18\x01 \x03(\x0b\x32\x1a.blackkeys.assets.v1.Brand\"\x1c\n\x0cImageRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"3\n\rImageResponse\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\x0c\x12\x14\n\x0c\x63ontent_type\x18\x02 \x01(\tBNZLgithub.com/plaza-san-miguel/blackkeys/blackkeys-assets/gen/assetsv1;assetsv1b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -37,13 +37,13 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_STORE']._serialized_start=82
   _globals['_STORE']._serialized_end=115
   _globals['_BRAND']._serialized_start=118
-  _globals['_BRAND']._serialized_end=361
-  _globals['_LISTREQUEST']._serialized_start=363
-  _globals['_LISTREQUEST']._serialized_end=376
-  _globals['_LISTRESPONSE']._serialized_start=378
-  _globals['_LISTRESPONSE']._serialized_end=436
-  _globals['_IMAGEREQUEST']._serialized_start=438
-  _globals['_IMAGEREQUEST']._serialized_end=466
-  _globals['_IMAGERESPONSE']._serialized_start=468
-  _globals['_IMAGERESPONSE']._serialized_end=519
+  _globals['_BRAND']._serialized_end=326
+  _globals['_LISTREQUEST']._serialized_start=328
+  _globals['_LISTREQUEST']._serialized_end=341
+  _globals['_LISTRESPONSE']._serialized_start=343
+  _globals['_LISTRESPONSE']._serialized_end=401
+  _globals['_IMAGEREQUEST']._serialized_start=403
+  _globals['_IMAGEREQUEST']._serialized_end=431
+  _globals['_IMAGERESPONSE']._serialized_start=433
+  _globals['_IMAGERESPONSE']._serialized_end=484
 # @@protoc_insertion_point(module_scope)

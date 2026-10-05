@@ -20,7 +20,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const brandsListCacheKey = "blackkeys-assets:brands:list:v2"
+const brandsListCacheKey = "blackkeys-assets:brands:list:v1"
 const brandsListCacheTTL = 15 * time.Minute
 
 type brandRecord struct {

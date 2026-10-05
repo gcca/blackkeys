@@ -17,14 +17,12 @@ message Store {
 message Brand {
   string name = 1;
   string display_name = 2;
-  reserved 3, 4;
-  reserved "logo_url", "picture_url";
-  string description = 5;
-  bool is_active = 6;
-  int32 kiosk_id = 7;
-  repeated Amenity amenities = 8;
-  repeated Store stores = 9;
-  repeated string tags = 10;
+  string description = 3;
+  bool is_active = 4;
+  int32 kiosk_id = 5;
+  repeated Amenity amenities = 6;
+  repeated Store stores = 7;
+  repeated string tags = 8;
 }
 
 message ListRequest {}

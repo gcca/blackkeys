@@ -199,7 +199,7 @@ def ReadEventsList(cache: pylibmc.ClientPool) -> list | None:
     return decoded
 
 
-BRANDS_LIST_CACHE_KEY = "blackkeys-brands-list:v2"
+BRANDS_LIST_CACHE_KEY = "blackkeys-brands-list"
 BRANDS_CACHE_POOL_SIZE = 4
 BRANDS_LIST_CACHE_TTL_SECONDS = 4500
 BRAND_IMAGE_CACHE_KEY_PREFIX = "blackkeys-brand-image:"
