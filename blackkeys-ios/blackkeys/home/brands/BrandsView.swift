@@ -62,7 +62,9 @@ struct BrandsView: View {
         }
         .fullScreenCover(item: $selectedBrand) { brand in
             BrandView(item: BrandPresentation(brand: brand))
+                .environment(\.brandImageToken, token)
         }
+        .environment(\.brandImageToken, token)
     }
 
     private func loadBrands() async {

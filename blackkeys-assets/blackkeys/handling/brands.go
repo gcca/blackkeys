@@ -20,14 +20,12 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const brandsListCacheKey = "blackkeys-assets:brands:list:v1"
+const brandsListCacheKey = "blackkeys-assets:brands:list:v2"
 const brandsListCacheTTL = 15 * time.Minute
 
 type brandRecord struct {
 	Name        string          `parquet:"name,optional"`
 	DisplayName string          `parquet:"display_name,optional"`
-	LogoURL     string          `parquet:"logo_url,optional"`
-	PictureURL  string          `parquet:"picture_url,optional"`
 	Description string          `parquet:"description,optional"`
 	IsActive    bool            `parquet:"is_active,optional"`
 	KioskID     int32           `parquet:"kiosk_id,optional"`
@@ -66,8 +64,6 @@ func (r brandRecord) brand() *assetsv1.Brand {
 	return &assetsv1.Brand{
 		Name:        r.Name,
 		DisplayName: r.DisplayName,
-		LogoUrl:     r.LogoURL,
-		PictureUrl:  r.PictureURL,
 		Description: r.Description,
 		IsActive:    r.IsActive,
 		KioskId:     r.KioskID,

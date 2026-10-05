@@ -8,8 +8,6 @@ struct BrandDetailFormattingTests {
         Brand(
             name: "TEST",
             displayName: "Test",
-            logoUrl: nil,
-            pictureUrl: nil,
             description: "",
             isActive: isActive,
             kioskId: 1,

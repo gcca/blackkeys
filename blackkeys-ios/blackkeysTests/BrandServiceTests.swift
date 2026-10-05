@@ -18,8 +18,6 @@ struct BrandServiceTests {
         let brand = try #require(brands.first)
         #expect(brand.name == "ADIDAS")
         #expect(brand.displayName == "Adidas")
-        #expect(brand.logoUrl == URL(string: "https://example/logo"))
-        #expect(brand.pictureUrl == URL(string: "https://example/picture"))
         #expect(brand.description == "desc")
         #expect(brand.isActive == true)
         #expect(brand.kioskId == 12)
@@ -33,48 +31,24 @@ struct BrandServiceTests {
         #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer blackkeys-v1_abc")
     }
 
-    @Test func emptyPictureUrlDecodesAsNilInsteadOfFailingTheWholeList() async throws {
-        let cache = InMemoryBrandCache()
-        let bodyWithAnEmptyPictureUrl = """
-        [
-            {
-                "name": "ADIDAS",
-                "displayName": "Adidas",
-                "logoUrl": "https://example/logo",
-                "pictureUrl": "https://example/picture",
-                "description": "desc",
-                "isActive": true,
-                "kioskId": 12,
-                "amenities": [],
-                "stores": [],
-                "tags": []
-            },
-            {
-                "name": "BCP",
-                "displayName": "BCP",
-                "logoUrl": "https://example/bcp-logo",
-                "pictureUrl": "",
-                "description": "desc",
-                "isActive": true,
-                "kioskId": 3,
-                "amenities": [],
-                "stores": [],
-                "tags": []
-            }
-        ]
-        """
-        let service = BrandService(
-            baseURL: URL(string: "https://api.example.com")!,
-            session: makeSession { _ in response(statusCode: 200, body: bodyWithAnEmptyPictureUrl) },
-            cache: cache
+    @Test func imageURLsPointAtTheWsBrandImageRoutes() {
+        let baseURL = URL(string: "https://api.example.com")!
+        #expect(sampleBrand.imageURL(kind: "logo", baseURL: baseURL) == URL(string: "https://api.example.com/v1/brands/ADIDAS/logo"))
+        #expect(sampleBrand.imageURL(kind: "picture", baseURL: baseURL) == URL(string: "https://api.example.com/v1/brands/ADIDAS/picture"))
+    }
+
+    @Test func imageURLEscapesTheNameAsASinglePathSegment() {
+        let brand = Brand(
+            name: "a/b c", displayName: "", description: "", isActive: true,
+            kioskId: 0, amenities: [], stores: [], tags: []
         )
+        let url = brand.imageURL(kind: "logo", baseURL: URL(string: "https://api.example.com/")!)
+        #expect(url?.absoluteString == "https://api.example.com/v1/brands/a%2Fb%20c/logo")
+    }
 
-        let brands = try await service.fetchBrands(token: "t")
-
-        #expect(brands.count == 2)
-        #expect(brands[0].pictureUrl == URL(string: "https://example/picture"))
-        #expect(brands[1].pictureUrl == nil)
-        #expect(brands[1].logoUrl == URL(string: "https://example/bcp-logo"))
+    @Test func imageURLIsNilWithoutAUsableBaseURL() {
+        #expect(sampleBrand.imageURL(kind: "logo", baseURL: nil) == nil)
+        #expect(sampleBrand.imageURL(kind: "logo", baseURL: URL(string: "ftp://api.example.com")!) == nil)
     }
 
     @Test func missingBaseURLIsAConfigurationError() async {
@@ -261,8 +235,6 @@ struct FileBrandCacheTests {
 private let sampleBrand = Brand(
     name: "ADIDAS",
     displayName: "Adidas",
-    logoUrl: URL(string: "https://example/logo")!,
-    pictureUrl: URL(string: "https://example/picture")!,
     description: "desc",
     isActive: true,
     kioskId: 12,
@@ -276,8 +248,6 @@ private let sampleBrandsJSON = """
     {
         "name": "ADIDAS",
         "displayName": "Adidas",
-        "logoUrl": "https://example/logo",
-        "pictureUrl": "https://example/picture",
         "description": "desc",
         "isActive": true,
         "kioskId": 12,

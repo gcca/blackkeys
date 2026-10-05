@@ -41,8 +41,6 @@ def SampleBrand() -> messages_pb2.Brand:
     return messages_pb2.Brand(
         name="ADIDAS",
         display_name="Adidas",
-        logo_url="https://example/logo",
-        picture_url="https://example/picture",
         description="desc",
         is_active=True,
         kiosk_id=12,
@@ -64,8 +62,6 @@ class BrandsMappingTests(unittest.TestCase):
                 {
                     "name": "ADIDAS",
                     "displayName": "Adidas",
-                    "logoUrl": "https://example/logo",
-                    "pictureUrl": "https://example/picture",
                     "description": "desc",
                     "isActive": True,
                     "kioskId": 12,

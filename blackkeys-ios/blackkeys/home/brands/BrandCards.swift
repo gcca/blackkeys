@@ -1,8 +1,10 @@
 import SwiftUI
 import UIKit
 
-/// Some brands carry no `pictureUrl` at all (see `Brand`'s custom decoding);
-/// a `nil` URL skips loading entirely and goes straight to the placeholder.
+/// The ws image routes are session-gated, so the request carries the token
+/// from `\.brandImageToken`; only a 2xx body is cached, so a 401/404 JSON
+/// error never poisons `BrandImageCache`. A `nil` URL (no API base URL) or a
+/// failed load (e.g. a brand with no picture → 404) shows the placeholder.
 /// For a non-nil URL, `BrandImageCache` is checked *synchronously in init*,
 /// not in `.task`/`.onAppear` — that's what lets a cache hit seed `@State`
 /// before this view's first `body` call, so the spinner branch is never
@@ -10,6 +12,7 @@ import UIKit
 struct BrandCardImage: View {
     let url: URL?
     let tint: Color
+    @Environment(\.brandImageToken) private var token
     @State private var image: Image?
     @State private var failed = false
 
@@ -32,7 +35,14 @@ struct BrandCardImage: View {
                 ProgressView()
             }
             .task(id: url) {
-                guard let data = try? await URLSession.shared.data(from: url).0,
+                var request = URLRequest(url: url)
+                if let token {
+                    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+                }
+                guard let (data, response) = try? await URLSession.shared.data(for: request),
+                      let http = response as? HTTPURLResponse,
+                      (200..<300).contains(http.statusCode),
+                      !data.isEmpty,
                       let uiImage = UIImage(data: data) else {
                     failed = true
                     return
@@ -44,6 +54,11 @@ struct BrandCardImage: View {
             tint.opacity(0.3)
         }
     }
+}
+
+extension EnvironmentValues {
+    /// Session token for the ws brand image routes; set by `BrandsView`.
+    @Entry var brandImageToken: String?
 }
 
 struct FeaturedBrandCard: View {

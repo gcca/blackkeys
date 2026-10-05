@@ -17,8 +17,8 @@ message Store {
 message Brand {
   string name = 1;
   string display_name = 2;
-  string logo_url = 3;
-  string picture_url = 4;
+  reserved 3, 4;
+  reserved "logo_url", "picture_url";
   string description = 5;
   bool is_active = 6;
   int32 kiosk_id = 7;

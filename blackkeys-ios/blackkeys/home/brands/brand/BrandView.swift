@@ -45,8 +45,6 @@ struct BrandView: View {
     BrandView(item: BrandPresentation(brand: Brand(
         name: "ADIDAS",
         displayName: "Adidas",
-        logoUrl: URL(string: "https://example.com/logo.png"),
-        pictureUrl: URL(string: "https://example.com/picture.jpg"),
         description: "Encuentra las últimas colecciones de calzado y ropa deportiva para toda la familia.",
         isActive: true,
         kioskId: 12,

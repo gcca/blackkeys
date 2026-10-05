@@ -4,8 +4,6 @@ struct Brand: Codable, Identifiable, Equatable, Sendable {
     var id: String { name }
     let name: String
     let displayName: String
-    let logoUrl: URL?
-    let pictureUrl: URL?
     let description: String
     let isActive: Bool
     let kioskId: Int
@@ -23,59 +21,31 @@ struct Brand: Codable, Identifiable, Equatable, Sendable {
         let name: String
     }
 
-    private enum CodingKeys: String, CodingKey {
-        case name, displayName, logoUrl, pictureUrl, description, isActive, kioskId, amenities, stores, tags
-    }
+    /// Served by ws (`GET v1/brands/<name>/logo|picture`, session-gated —
+    /// `BrandCardImage` attaches the token) rather than carried in the list
+    /// payload. `nil` when the build has no API base URL configured.
+    var logoUrl: URL? { imageURL(kind: "logo") }
+    var pictureUrl: URL? { imageURL(kind: "picture") }
 
-    /// Some live brands carry `""` for `logoUrl`/`pictureUrl` (no image yet),
-    /// not a missing key or `null`. `URL`'s own `Decodable` conformance
-    /// throws on an unparseable string rather than yielding `nil`, and a
-    /// throw from any one element fails the whole `[Brand]` array decode —
-    /// this custom init is what keeps one imageless brand from taking down
-    /// the entire list.
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        name = try container.decode(String.self, forKey: .name)
-        displayName = try container.decode(String.self, forKey: .displayName)
-        logoUrl = Self.decodeURL(container, forKey: .logoUrl)
-        pictureUrl = Self.decodeURL(container, forKey: .pictureUrl)
-        description = try container.decode(String.self, forKey: .description)
-        isActive = try container.decode(Bool.self, forKey: .isActive)
-        kioskId = try container.decode(Int.self, forKey: .kioskId)
-        amenities = try container.decode([Amenity].self, forKey: .amenities)
-        stores = try container.decode([Store].self, forKey: .stores)
-        tags = try container.decode([String].self, forKey: .tags)
-    }
-
-    init(
-        name: String,
-        displayName: String,
-        logoUrl: URL?,
-        pictureUrl: URL?,
-        description: String,
-        isActive: Bool,
-        kioskId: Int,
-        amenities: [Amenity],
-        stores: [Store],
-        tags: [String]
-    ) {
-        self.name = name
-        self.displayName = displayName
-        self.logoUrl = logoUrl
-        self.pictureUrl = pictureUrl
-        self.description = description
-        self.isActive = isActive
-        self.kioskId = kioskId
-        self.amenities = amenities
-        self.stores = stores
-        self.tags = tags
-    }
-
-    private static func decodeURL(_ container: KeyedDecodingContainer<CodingKeys>, forKey key: CodingKeys) -> URL? {
-        guard let raw = try? container.decode(String.self, forKey: key), !raw.isEmpty else {
+    /// `name` is percent-encoded as a single path segment: `/` is escaped
+    /// too, so an odd name can't split the route that ws matches on.
+    func imageURL(kind: String, baseURL: URL? = APIConfiguration.baseURL) -> URL? {
+        var allowed = CharacterSet.urlPathAllowed
+        allowed.remove("/")
+        guard let baseURL,
+              let scheme = baseURL.scheme?.lowercased(),
+              ["http", "https"].contains(scheme),
+              baseURL.host != nil,
+              let segment = name.addingPercentEncoding(withAllowedCharacters: allowed) else {
             return nil
         }
-        return URL(string: raw)
+        return URL(string: baseURL.absoluteString.trimmingSuffix("/") + "/v1/brands/" + segment + "/" + kind)
+    }
+}
+
+private extension String {
+    func trimmingSuffix(_ suffix: String) -> String {
+        hasSuffix(suffix) ? String(dropLast(suffix.count)) : self
     }
 }
 
