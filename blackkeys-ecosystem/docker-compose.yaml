@@ -409,9 +409,9 @@ services:
       context: ../blackkeys-hydrant
       dockerfile: Dockerfile
       args:
-        C3_PLATFORM: linux/arm64
+        C3_PLATFORM: linux/amd64
     image: blackkeys-hydrant:local
-    platform: linux/arm64
+    platform: linux/amd64
     profiles: [apps]
     environment:
       TZ: UTC

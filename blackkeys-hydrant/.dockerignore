@@ -1,0 +1,9 @@
+.git
+.gitignore
+build/
+out/
+.ninja_log
+CTX.md
+LICENSE
+deps/
+scripts/
