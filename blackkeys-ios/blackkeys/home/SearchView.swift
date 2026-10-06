@@ -1,11 +1,18 @@
 import SwiftUI
 
 struct SearchView: View {
-    private let mapURL = URL(string: "https://demos.mappedin.com/web/mappedin-web/plaza-san-miguel/plaza-san-miguel.html")!
+    let destination: MapDestination?
+
+    init(destination: MapDestination? = nil) {
+        self.destination = destination
+    }
 
     var body: some View {
-        MapView(url: mapURL)
-            .ignoresSafeArea(edges: .top)
+        MapView(
+            url: MapRoute.url(destination: destination),
+            navigationID: destination?.requestID
+        )
+        .ignoresSafeArea(edges: .top)
     }
 }
 

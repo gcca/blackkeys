@@ -41,13 +41,23 @@ struct HomeView: View {
     @State private var storesScrollDepth: CGFloat = 0
     @State private var eventsScrollDepth: CGFloat = 0
     @State private var topBarHeight: CGFloat = 44
+    @State private var mapDestination: MapDestination?
+    @State private var isShowingDebugMenu = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
             Tab(value: HomeTab.stores) {
-                BrandsView(token: session.token, topContentInset: topBarHeight + Self.feedTopSpacing) { scrollDepth in
-                    storesScrollDepth = scrollDepth
-                }
+                BrandsView(
+                    token: session.token,
+                    topContentInset: topBarHeight + Self.feedTopSpacing,
+                    onShowDirections: { destination in
+                        mapDestination = destination
+                        selectedTab = .search
+                    },
+                    onScrollDepthChange: { scrollDepth in
+                        storesScrollDepth = scrollDepth
+                    }
+                )
             } label: {
                 tabLabel(for: .stores)
             }
@@ -61,7 +71,7 @@ struct HomeView: View {
             }
 
             Tab(value: HomeTab.search, role: .search) {
-                SearchView()
+                SearchView(destination: mapDestination)
                     .safeAreaInset(edge: .top, spacing: 0) {
                         Color.clear
                             .frame(height: topBarHeight)
@@ -93,6 +103,9 @@ struct HomeView: View {
             .environment(\.colorScheme, selectedTab == .search ? .light : colorScheme)
         }
         .scrollEdgeEffectStyle(.automatic, for: .top)
+        .sheet(isPresented: $isShowingDebugMenu) {
+            DebugMenuView()
+        }
     }
 
     private var topBar: some View {
@@ -117,6 +130,9 @@ struct HomeView: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Hi, \(session.username)")
+            .debugMenuTrigger(enabled: AppConfiguration.isDebugUser(session.username)) {
+                isShowingDebugMenu = true
+            }
         }
     }
 
@@ -152,6 +168,20 @@ struct HomeView: View {
     private func tabLabel(for tab: HomeTab) -> some View {
         Label(tab.title, systemImage: tab.systemImage)
             .accessibilityIdentifier(tab.accessibilityIdentifier)
+    }
+}
+
+private extension View {
+    /// Long-press (and a VoiceOver action) that opens the debug menu. Applied
+    /// only for allowed users, so everyone else gets neither.
+    @ViewBuilder
+    func debugMenuTrigger(enabled: Bool, action: @escaping () -> Void) -> some View {
+        if enabled {
+            onLongPressGesture(minimumDuration: 0.8, perform: action)
+                .accessibilityAction(named: "Debug menu", action)
+        } else {
+            self
+        }
     }
 }
 

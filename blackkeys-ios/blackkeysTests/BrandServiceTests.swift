@@ -230,6 +230,21 @@ struct FileBrandCacheTests {
         #expect(loaded.brands == entry.brands)
         #expect(abs(loaded.fetchedAt.timeIntervalSince(entry.fetchedAt)) < 1)
     }
+
+    @Test func removeAllDropsTheEntryAndTheCacheStaysUsable() throws {
+        let scratch = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        let cache = FileBrandCache(cacheDirectory: scratch)
+        let entry = BrandsCacheEntry(brands: [sampleBrand], fetchedAt: Date())
+
+        cache.store(entry)
+        cache.removeAll()
+        #expect(cache.loadCachedBrands() == nil)
+
+        cache.removeAll()
+        cache.store(entry)
+        #expect(cache.loadCachedBrands()?.brands == entry.brands)
+    }
 }
 
 private let sampleBrand = Brand(
@@ -267,6 +282,10 @@ private final class InMemoryBrandCache: BrandCaching, @unchecked Sendable {
 
     func store(_ entry: BrandsCacheEntry) {
         self.entry = entry
+    }
+
+    func removeAll() {
+        entry = nil
     }
 }
 

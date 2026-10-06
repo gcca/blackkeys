@@ -10,6 +10,7 @@ struct BrandsView: View {
     private let token: String?
     private let brandService: BrandService
     private let topContentInset: CGFloat
+    private let onShowDirections: (MapDestination) -> Void
     private let onScrollDepthChange: (CGFloat) -> Void
 
     @State private var brands: [Brand] = []
@@ -20,11 +21,13 @@ struct BrandsView: View {
         token: String? = nil,
         brandService: BrandService = BrandService(),
         topContentInset: CGFloat = 12,
+        onShowDirections: @escaping (MapDestination) -> Void = { _ in },
         onScrollDepthChange: @escaping (CGFloat) -> Void = { _ in }
     ) {
         self.token = token
         self.brandService = brandService
         self.topContentInset = topContentInset
+        self.onShowDirections = onShowDirections
         self.onScrollDepthChange = onScrollDepthChange
     }
 
@@ -61,8 +64,13 @@ struct BrandsView: View {
             await loadBrands()
         }
         .fullScreenCover(item: $selectedBrand) { brand in
-            BrandView(item: BrandPresentation(brand: brand))
-                .environment(\.brandImageToken, token)
+            BrandView(item: BrandPresentation(brand: brand)) { destination in
+                // Switch tabs first, then dismiss: the cover then reveals the
+                // map instead of the feed.
+                onShowDirections(destination)
+                selectedBrand = nil
+            }
+            .environment(\.brandImageToken, token)
         }
         .environment(\.brandImageToken, token)
     }

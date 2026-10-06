@@ -80,6 +80,7 @@ struct BrandsCacheEntry: Codable, Equatable, Sendable {
 protocol BrandCaching: Sendable {
     func loadCachedBrands() -> BrandsCacheEntry?
     func store(_ entry: BrandsCacheEntry)
+    func removeAll()
 }
 
 /// Stores the fetched brand list as a single JSON file under the app's
@@ -116,6 +117,12 @@ final class FileBrandCache: BrandCaching, @unchecked Sendable {
         let directory = fileURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try? data.write(to: fileURL, options: .atomic)
+    }
+
+    func removeAll() {
+        lock.lock()
+        defer { lock.unlock() }
+        try? FileManager.default.removeItem(at: fileURL)
     }
 }
 

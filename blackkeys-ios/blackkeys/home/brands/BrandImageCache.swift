@@ -3,6 +3,8 @@ import Foundation
 protocol BrandImageCaching: Sendable {
     func loadCachedImage(for url: URL) -> Data?
     func store(_ data: Data, for url: URL)
+    func removeAll()
+    func byteCount() -> Int
 }
 
 /// Stores fetched brand picture/logo bytes under the app's Caches directory,
@@ -14,7 +16,9 @@ final class FileBrandImageCache: BrandImageCaching, @unchecked Sendable {
     private let lock = NSLock()
 
     init(cacheDirectory: URL = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]) {
-        self.directory = cacheDirectory.appendingPathComponent("BrandImagesCache")
+        // `-v2`: brand images moved to WebP under unchanged URLs; with no TTL,
+        // bytes cached before the switch would otherwise be served forever.
+        self.directory = cacheDirectory.appendingPathComponent("BrandImagesCache-v2")
     }
 
     func loadCachedImage(for url: URL) -> Data? {
@@ -28,6 +32,24 @@ final class FileBrandImageCache: BrandImageCaching, @unchecked Sendable {
         defer { lock.unlock() }
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try? data.write(to: fileURL(for: url), options: .atomic)
+    }
+
+    func removeAll() {
+        lock.lock()
+        defer { lock.unlock() }
+        try? FileManager.default.removeItem(at: directory)
+    }
+
+    func byteCount() -> Int {
+        lock.lock()
+        defer { lock.unlock() }
+        let files = (try? FileManager.default.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.fileSizeKey]
+        )) ?? []
+        return files.reduce(0) { total, file in
+            total + ((try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        }
     }
 
     private func fileURL(for url: URL) -> URL {
@@ -73,5 +95,16 @@ final class BrandImageCache: @unchecked Sendable {
     func store(_ data: Data, for url: URL) {
         memory.setObject(data as NSData, forKey: url as NSURL)
         disk.store(data, for: url)
+    }
+
+    /// Drops both layers. Views already showing an image keep it until they
+    /// are rebuilt; the next load of any URL goes back to the network.
+    func removeAll() {
+        memory.removeAllObjects()
+        disk.removeAll()
+    }
+
+    func diskByteCount() -> Int {
+        disk.byteCount()
     }
 }

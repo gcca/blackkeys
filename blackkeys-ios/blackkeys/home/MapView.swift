@@ -19,16 +19,29 @@ enum MapGeolocationPermissionPolicy {
 
 struct MapView: UIViewRepresentable {
     let url: URL
+    /// Changes whenever a new jump is requested, so asking for the same `url`
+    /// again still navigates (the user may have moved elsewhere in the map).
+    var navigationID: UUID?
 
     func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView(frame: .zero)
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.uiDelegate = context.coordinator
+        context.coordinator.markLoaded(url: url, navigationID: navigationID)
         webView.load(URLRequest(url: url))
         return webView
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
+        // Re-renders with an unchanged url/navigationID never reload the page.
+        // A new request does: the Mappedin routes live in the URL fragment, so
+        // loading the same page with a different fragment is a same-document
+        // navigation (`hashchange`), not a page reload.
+        if context.coordinator.needsLoad(url: url, navigationID: navigationID) {
+            context.coordinator.markLoaded(url: url, navigationID: navigationID)
+            uiView.load(URLRequest(url: url))
+        }
+
         // The web page's own scrollable content (map canvas, attribution)
         // starts at its viewport's top edge, unaware of the notch/status bar
         // the full-bleed WKWebView extends under. Insetting only the scroll
@@ -49,6 +62,18 @@ struct MapView: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject, WKUIDelegate {
+        private var loadedURL: URL?
+        private var loadedNavigationID: UUID?
+
+        func needsLoad(url: URL, navigationID: UUID?) -> Bool {
+            url != loadedURL || navigationID != loadedNavigationID
+        }
+
+        func markLoaded(url: URL, navigationID: UUID?) {
+            loadedURL = url
+            loadedNavigationID = navigationID
+        }
+
         func webView(
             _ webView: WKWebView,
             requestGeolocationPermissionFor origin: WKSecurityOrigin,
@@ -67,6 +92,6 @@ struct MapView: UIViewRepresentable {
 }
 
 #Preview {
-    MapView(url: URL(string: "https://demos.mappedin.com/web/mappedin-web/plaza-san-miguel/plaza-san-miguel.html")!)
+    MapView(url: MapRoute.baseURL)
         .ignoresSafeArea()
 }

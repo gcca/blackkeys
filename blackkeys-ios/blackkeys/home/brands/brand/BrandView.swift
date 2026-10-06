@@ -6,6 +6,7 @@ import SwiftUI
 /// so the detail screen matches the card the user tapped.
 struct BrandView: View {
     let item: BrandPresentation
+    var onShowDirections: (MapDestination) -> Void = { _ in }
 
     @Environment(\.dismiss) private var dismiss
     @State private var isFavorite = false
@@ -32,6 +33,8 @@ struct BrandView: View {
 
                     BrandInfoSection(item: item)
                         .padding(.top, BrandCoverHeader.logoOverlap)
+
+                    BrandStoresSection(brand: item.brand, onShowDirections: onShowDirections)
 
                     BrandDescriptionSection(brand: item.brand)
                 }
