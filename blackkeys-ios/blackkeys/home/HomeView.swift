@@ -104,7 +104,7 @@ struct HomeView: View {
         }
         .scrollEdgeEffectStyle(.automatic, for: .top)
         .sheet(isPresented: $isShowingDebugMenu) {
-            DebugMenuView()
+            DebugView()
         }
     }
 
