@@ -55,6 +55,11 @@ struct BrandCoverHeader: View {
             .overlay {
                 Circle().strokeBorder(.background, lineWidth: 4)
             }
+            // Outermost edge: the ring above matches the page background, so
+            // on its own it is invisible against a plain screen.
+            .overlay {
+                Circle().strokeBorder(.separator, lineWidth: 1)
+            }
     }
 
     private func circleButton(systemImage: String, accessibilityIdentifier: String, action: @escaping () -> Void) -> some View {

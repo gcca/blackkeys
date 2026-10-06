@@ -84,6 +84,7 @@ struct FeaturedBrandCard: View {
         .frame(width: 150)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .brandCardBorder()
     }
 }
 
@@ -129,5 +130,19 @@ struct BrandFeedCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background)
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .brandCardBorder()
+    }
+}
+
+extension View {
+    /// Thin outline for a brand card. Applied after `clipShape` so it follows
+    /// the rounded corners; without it a white card on a white screen has no
+    /// visible edge. `strokeBorder` draws inside the shape, so the card's
+    /// size doesn't change.
+    func brandCardBorder() -> some View {
+        overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(.separator, lineWidth: 1)
+        }
     }
 }
