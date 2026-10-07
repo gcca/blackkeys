@@ -43,6 +43,7 @@ struct HomeView: View {
     @State private var topBarHeight: CGFloat = 44
     @State private var mapDestination: MapDestination?
     @State private var isShowingDebugMenu = false
+    @State private var isShowingProfile = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -106,6 +107,9 @@ struct HomeView: View {
         .sheet(isPresented: $isShowingDebugMenu) {
             DebugView()
         }
+        .sheet(isPresented: $isShowingProfile) {
+            ProfileView(username: session.username)
+        }
     }
 
     private var topBar: some View {
@@ -130,6 +134,11 @@ struct HomeView: View {
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Hi, \(session.username)")
+            .accessibilityHint("Opens your profile")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityIdentifier("homeUsernameButton")
+            .contentShape(Rectangle())
+            .onTapGesture { isShowingProfile = true }
             .debugMenuTrigger(enabled: AppConfiguration.isDebugUser(session.username)) {
                 isShowingDebugMenu = true
             }
