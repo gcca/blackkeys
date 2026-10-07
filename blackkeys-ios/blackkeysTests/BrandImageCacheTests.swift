@@ -67,6 +67,28 @@ struct FileBrandImageCacheTests {
         #expect(cache.diskByteCount() == 0)
     }
 
+    @Test func removeEntriesDropsOnlyThatKindAndTheMemoryLayer() throws {
+        let scratch = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        let cache = BrandImageCache(disk: FileBrandImageCache(cacheDirectory: scratch))
+        let logo = try imageURL(brand: "ADIDAS", kind: "logo")
+        let picture = try imageURL(brand: "ADIDAS", kind: "picture")
+        cache.store(Data([0x01]), for: logo)
+        cache.store(Data([0x02]), for: picture)
+
+        cache.removeEntries(kind: .logo)
+
+        #expect(cache.cachedImage(for: logo) == nil)
+        #expect(cache.cachedImage(for: picture) == Data([0x02]))
+        #expect(cache.cachedImageEntries().map(\.kind) == [.picture])
+    }
+
+    @Test func kindIsReadFromTheNameSuffix() {
+        #expect(CachedImageKind(name: "ADIDAS/logo") == .logo)
+        #expect(CachedImageKind(name: "Café Central/picture") == .picture)
+        #expect(CachedImageKind(name: "image") == .other)
+    }
+
     /// The ws image routes serve `image/webp`; `BrandCardImage` decodes
     /// cached and fetched bytes with `UIImage(data:)`.
     @Test func cachedWebPDataDecodesAsAnImage() throws {

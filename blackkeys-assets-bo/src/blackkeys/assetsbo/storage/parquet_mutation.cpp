@@ -1,4 +1,5 @@
 #include "blackkeys/assetsbo/storage/parquet_mutation.hpp"
+#include "blackkeys/assetsbo/storage/timestamp.hpp"
 
 #include "blackkeys/assetsbo/storage/parquet_table.hpp"
 
@@ -119,7 +120,14 @@ ApplyEdit(std::shared_ptr<arrow::Table> table, std::size_t row_index,
   const auto type = field->type();
 
   std::shared_ptr<arrow::Scalar> new_scalar;
-  if (IsEditableTypeId(type->id())) {
+  if (edit.binary) {
+    if (type->id() != arrow::Type::BINARY && type->id() != arrow::Type::LARGE_BINARY)
+      return arrow::Status::Invalid("raw bytes require a binary column");
+    if (type->id() == arrow::Type::BINARY)
+      new_scalar = std::make_shared<arrow::BinaryScalar>(arrow::Buffer::FromString(*edit.binary));
+    else
+      new_scalar = std::make_shared<arrow::LargeBinaryScalar>(arrow::Buffer::FromString(*edit.binary));
+  } else if (IsEditableTypeId(type->id())) {
     Json::CharReaderBuilder reader_builder;
     reader_builder["failIfExtra"] = true;
     std::unique_ptr<Json::CharReader> reader(reader_builder.newCharReader());
@@ -160,7 +168,7 @@ ApplyEdit(std::shared_ptr<arrow::Table> table, std::size_t row_index,
 arrow::Result<std::string> SerializeTable(const arrow::Table &table) {
   ARROW_ASSIGN_OR_RAISE(auto sink, arrow::io::BufferOutputStream::Create());
   ARROW_RETURN_NOT_OK(
-      parquet::arrow::WriteTable(table, arrow::default_memory_pool(), sink));
+      parquet::arrow::WriteTable(table, arrow::default_memory_pool(), sink, 1024 * 1024, parquet::WriterProperties::Builder().build(), parquet::ArrowWriterProperties::Builder().store_schema()->build()));
   ARROW_ASSIGN_OR_RAISE(auto buffer, sink->Finish());
   return std::string(reinterpret_cast<const char *>(buffer->data()),
                      static_cast<std::size_t>(buffer->size()));
@@ -206,6 +214,11 @@ ParseScalarText(const std::string &text, const std::shared_ptr<arrow::DataType> 
     } catch (const std::exception &) {
       return arrow::Status::Invalid("expected an integer for an int64 field");
     }
+  case arrow::Type::TIMESTAMP: {
+    const auto timestamp = std::static_pointer_cast<arrow::TimestampType>(type);
+    ARROW_ASSIGN_OR_RAISE(auto value, ParseTimestamp(text, timestamp->unit()));
+    return std::make_shared<arrow::TimestampScalar>(value, type);
+  }
   case arrow::Type::STRING:
     return std::make_shared<arrow::StringScalar>(text);
   default:
@@ -303,20 +316,30 @@ arrow::Result<std::string> AppendRowImpl(const std::string &parquet_bytes,
   ARROW_ASSIGN_OR_RAISE(table, table->CombineChunks());
 
   std::vector<std::string> texts(static_cast<std::size_t>(table->num_columns()));
+  std::vector<std::optional<std::string>> binaries(texts.size());
   for (const auto &cell : cells) {
     if (cell.column_index >= texts.size()) {
       return arrow::Status::Invalid("column index out of range");
     }
     texts[cell.column_index] = cell.text;
+    binaries[cell.column_index] = cell.binary;
   }
 
   std::vector<std::shared_ptr<arrow::Array>> new_columns;
   new_columns.reserve(texts.size());
   for (int col_idx = 0; col_idx < table->num_columns(); ++col_idx) {
     const auto type = table->schema()->field(col_idx)->type();
-    ARROW_ASSIGN_OR_RAISE(
-        auto new_scalar,
-        NewCellScalar(texts[static_cast<std::size_t>(col_idx)], type));
+    std::shared_ptr<arrow::Scalar> new_scalar;
+    if (binaries[col_idx]) {
+      if (type->id() != arrow::Type::BINARY && type->id() != arrow::Type::LARGE_BINARY)
+        return arrow::Status::Invalid("raw bytes require a binary column");
+      if (type->id() == arrow::Type::BINARY)
+        new_scalar = std::make_shared<arrow::BinaryScalar>(arrow::Buffer::FromString(*binaries[col_idx]));
+      else
+        new_scalar = std::make_shared<arrow::LargeBinaryScalar>(arrow::Buffer::FromString(*binaries[col_idx]));
+    } else {
+      ARROW_ASSIGN_OR_RAISE(new_scalar, NewCellScalar(texts[col_idx], type));
+    }
     ARROW_RETURN_NOT_OK(new_scalar->Validate());
 
     auto old_array = table->column(col_idx)->chunk(0);
@@ -336,6 +359,8 @@ arrow::Result<std::string> ReplaceCellsImpl(const std::string &parquet_bytes,
                         OpenParquetTable(parquet_bytes));
   ARROW_ASSIGN_OR_RAISE(table, table->CombineChunks());
 
+  if (row_index >= static_cast<std::size_t>(table->num_rows()))
+    return arrow::Status::Invalid("row index out of range");
   for (const auto &edit : edits) {
     ARROW_ASSIGN_OR_RAISE(table, ApplyEdit(table, row_index, edit));
   }

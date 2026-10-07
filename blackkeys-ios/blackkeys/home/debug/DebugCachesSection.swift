@@ -23,6 +23,20 @@ struct DebugCachesSection: View {
             }
             .accessibilityIdentifier("debugMenuClearImagesButton")
 
+            Button("Clear logos") {
+                imageCache.removeEntries(kind: .logo)
+                onCacheChange()
+                message = "Logos cleared. Logos already on screen stay until their view is rebuilt."
+            }
+            .accessibilityIdentifier("debugMenuClearLogosButton")
+
+            Button("Clear pictures") {
+                imageCache.removeEntries(kind: .picture)
+                onCacheChange()
+                message = "Pictures cleared. Pictures already on screen stay until their view is rebuilt."
+            }
+            .accessibilityIdentifier("debugMenuClearPicturesButton")
+
             Button("Clear brands cache") {
                 brandCache.removeAll()
                 onCacheChange()

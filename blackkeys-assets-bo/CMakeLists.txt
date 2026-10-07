@@ -17,6 +17,7 @@ endif()
 
 option(ASSETSBO_TEST "Build tests" OFF)
 
+find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 find_package(Drogon CONFIG REQUIRED)
 find_package(AWSSDK REQUIRED COMPONENTS s3)
 find_package(Parquet CONFIG REQUIRED)
@@ -30,8 +31,16 @@ add_executable(
   src/blackkeys/assetsbo/storage/s3.cpp
   src/blackkeys/assetsbo/storage/parquet_table.cpp
   src/blackkeys/assetsbo/storage/parquet_mutation.cpp
+  src/blackkeys/assetsbo/storage/timestamp.cpp
   src/blackkeys/assetsbo/storage/overrides.cpp
   src/blackkeys/assetsbo/handling/index/routes.cpp
+  src/blackkeys/assetsbo/handling/event/routes/common.cpp
+  src/blackkeys/assetsbo/handling/event/routes/events_list.cpp
+  src/blackkeys/assetsbo/handling/event/routes/events_create.cpp
+  src/blackkeys/assetsbo/handling/event/routes/events_details.cpp
+  src/blackkeys/assetsbo/handling/event/routes/events_update.cpp
+  src/blackkeys/assetsbo/handling/event/routes/events_delete.cpp
+  src/blackkeys/assetsbo/handling/event/routes/events_image.cpp
   src/blackkeys/assetsbo/handling/brand/routes/common.cpp
   src/blackkeys/assetsbo/handling/brand/routes/brands_list.cpp
   src/blackkeys/assetsbo/handling/brand/routes/brands_create.cpp
@@ -63,6 +72,7 @@ if(ASSETSBO_TEST)
     src/blackkeys/assetsbo/storage/parquet_table.cpp
     src/blackkeys/assetsbo/storage/parquet_table-test.cc
     src/blackkeys/assetsbo/storage/parquet_mutation.cpp
+    src/blackkeys/assetsbo/storage/timestamp.cpp
     src/blackkeys/assetsbo/storage/parquet_mutation-test.cc
     src/blackkeys/assetsbo/storage/overrides.cpp
     src/blackkeys/assetsbo/storage/overrides-test.cc)
@@ -81,6 +91,7 @@ if(ASSETSBO_TEST)
     src/blackkeys/assetsbo/storage/listing.cpp
     src/blackkeys/assetsbo/storage/parquet_table.cpp
     src/blackkeys/assetsbo/storage/parquet_mutation.cpp
+    src/blackkeys/assetsbo/storage/timestamp.cpp
     src/blackkeys/assetsbo/storage/overrides.cpp
     src/blackkeys/assetsbo/storage/s3.cpp
     src/blackkeys/assetsbo/handling/brand/routes/common.cpp
@@ -116,5 +127,37 @@ if(ASSETSBO_TEST)
   target_link_libraries(
     blackkeys-assets-bo-index-test PRIVATE GTest::gmock_main Drogon::Drogon)
 
+  drogon_create_views(
+    blackkeys-assets-bo-index-test
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/blackkeys/assetsbo/handling/index/template
+    ${CMAKE_CURRENT_BINARY_DIR}/index-test-views)
+  drogon_create_views(
+    blackkeys-assets-bo-index-test
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/blackkeys/assetsbo/handling/template
+    ${CMAKE_CURRENT_BINARY_DIR}/index-test-views)
   gtest_discover_tests(blackkeys-assets-bo-index-test)
+
+  add_executable(blackkeys-assets-bo-event-test
+    src/blackkeys/assetsbo/storage/listing.cpp
+    src/blackkeys/assetsbo/storage/parquet_table.cpp
+    src/blackkeys/assetsbo/storage/parquet_mutation.cpp
+    src/blackkeys/assetsbo/storage/timestamp.cpp
+    src/blackkeys/assetsbo/storage/s3.cpp
+    src/blackkeys/assetsbo/storage/overrides.cpp
+    src/blackkeys/assetsbo/handling/brand/routes/common.cpp
+    src/blackkeys/assetsbo/handling/event/routes/common.cpp
+    src/blackkeys/assetsbo/handling/event/routes/events_list.cpp
+    src/blackkeys/assetsbo/handling/event/routes/events_create.cpp
+    src/blackkeys/assetsbo/handling/event/routes/events_details.cpp
+    src/blackkeys/assetsbo/handling/event/routes/events_update.cpp
+    src/blackkeys/assetsbo/handling/event/routes/events_delete.cpp
+    src/blackkeys/assetsbo/handling/event/routes/events_image.cpp
+    src/blackkeys/assetsbo/handling/event/routes-test.cc)
+  drogon_create_views(blackkeys-assets-bo-event-test
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/blackkeys/assetsbo/handling
+    ${CMAKE_CURRENT_BINARY_DIR}/event-test-views)
+  target_include_directories(blackkeys-assets-bo-event-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+  target_link_libraries(blackkeys-assets-bo-event-test PRIVATE
+    GTest::gmock_main Drogon::Drogon ${AWSSDK_LINK_LIBRARIES} Parquet::parquet_shared)
+  gtest_discover_tests(blackkeys-assets-bo-event-test)
 endif()

@@ -1,0 +1,38 @@
+<%layout layout%>
+<%c++
+  const auto &columns = @@.get<std::vector<std::string>>("columns");
+  const auto &nested = @@.get<std::vector<bool>>("nested_columns");
+  const auto &digits = @@.get<std::vector<int>>("timestamp_digits");
+  const auto &row = @@.get<std::vector<std::string>>("row");
+  const auto action = drogon::HttpViewData::htmlTranslate(@@.get<std::string>("action"));
+  const auto back = drogon::HttpViewData::htmlTranslate(@@.get<std::string>("back"));
+%>
+<form method="post" action="{%action%}" enctype="multipart/form-data" class="flex flex-col gap-4 max-w-3xl">
+  <%view event_image %>
+<%c++ for (std::size_t c = 0; c < columns.size(); ++c) {
+  if (columns[c] == "image") continue;
+  auto column = drogon::HttpViewData::htmlTranslate(columns[c]);
+  auto value = drogon::HttpViewData::htmlTranslate(row[c]);
+%>
+  <fieldset class="fieldset">
+    <legend class="fieldset-legend">{%column%}</legend>
+<%c++ if (digits[c] >= 0) {
+  const auto datetime = drogon::HttpViewData::htmlTranslate(row[c].substr(0, 19));
+  const auto fraction = row[c].size() > 19 ? drogon::HttpViewData::htmlTranslate(row[c].substr(20)) : std::string{};
+%>
+    <label for="{%column%}">America/Lima (UTC−05:00)</label>
+    <input id="{%column%}" type="datetime-local" name="{%column%}" value="{%datetime%}" step="1" required class="input w-full">
+<%c++ if (digits[c] > 0) { %>
+    <label for="{%column%}_fraction">Fractional seconds (up to {%std::to_string(digits[c])%} digits)</label>
+    <input id="{%column%}_fraction" name="{%column%}_fraction" value="{%fraction%}" inputmode="numeric" pattern="[0-9]*" maxlength="{%std::to_string(digits[c])%}" class="input w-full">
+<%c++ } %>
+<%c++ } else if (nested[c] || columns[c] == "description") { %>
+    <label for="{%column%}" class="label">{%(nested[c] ? std::string("JSON") : std::string("Description"))%}</label>
+    <textarea id="{%column%}" name="{%column%}" rows="6" class="textarea w-full">{%value%}</textarea>
+<%c++ } else { %>
+    <input id="{%column%}" type="text" name="{%column%}" value="{%value%}" required class="input w-full">
+<%c++ } %>
+  </fieldset>
+<%c++ } %>
+  <div><button class="btn" type="submit">Save event</button> <a class="btn btn-ghost" href="{%back%}">Cancel</a></div>
+</form>

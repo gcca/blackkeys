@@ -1,0 +1,27 @@
+<%inc
+#include "blackkeys/assetsbo/handling/brand/routes/common.hpp"
+%>
+<%layout layout%>
+<%c++
+  const auto &columns = @@.get<std::vector<std::string>>("columns");
+  const auto &nested = @@.get<std::vector<bool>>("nested_columns");
+  const auto &row = @@.get<std::vector<std::string>>("row");
+  const auto edit = drogon::HttpViewData::htmlTranslate(@@.get<std::string>("action"));
+  const auto remove = drogon::HttpViewData::htmlTranslate(@@.get<std::string>("delete_action"));
+%>
+<div class="flex flex-wrap gap-2 mb-4">
+  <a class="btn" href="{%edit%}">Edit</a>
+  <form method="post" action="{%remove%}" onsubmit="return confirm('Remove this event and its image?')"><button type="submit" class="btn">Remove</button></form>
+  <a class="btn btn-ghost" href="/v1/event/list">Back to events</a>
+</div>
+<%view event_image %>
+<div class="overflow-x-auto">
+<table class="table table-zebra"><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody>
+<%c++ for (std::size_t c = 0; c < columns.size(); ++c) {
+  auto name = drogon::HttpViewData::htmlTranslate(columns[c]);
+  auto value = nested[c] ? blackkeys::assetsbo::handling::brand::RenderNestedCellHtml(row[c]) : drogon::HttpViewData::htmlTranslate(row[c]);
+%>
+<tr><th>{%name%}</th><td class="whitespace-pre-wrap">{%value%}</td></tr>
+<%c++ } %>
+</tbody></table>
+</div>

@@ -6,7 +6,7 @@
 
 using blackkeys::assetsbo::handling::index::Index;
 
-TEST(IndexRoutes, HomeRedirectsToBrandList) {
+TEST(IndexRoutes, HomeShowsBrandsAndEvents) {
   Index controller;
   testing::MockFunction<void(const drogon::HttpResponsePtr &)> callback;
   drogon::HttpResponsePtr response;
@@ -16,8 +16,10 @@ TEST(IndexRoutes, HomeRedirectsToBrandList) {
   controller.Home(nullptr, callback.AsStdFunction());
 
   ASSERT_TRUE(response);
-  EXPECT_EQ(response->statusCode(), drogon::k302Found);
-  EXPECT_EQ(response->getHeader("Location"), "/v1/brand/list");
+  EXPECT_EQ(response->statusCode(), drogon::k200OK);
+  EXPECT_THAT(std::string(response->body()), testing::HasSubstr("href=\"/v1/brand/list\""));
+  EXPECT_THAT(std::string(response->body()), testing::HasSubstr("href=\"/v1/event/list\""));
+  EXPECT_THAT(std::string(response->body()), testing::HasSubstr("Home</a>"));
 }
 
 TEST(IndexRoutes, HealthcheckReturnsOk) {

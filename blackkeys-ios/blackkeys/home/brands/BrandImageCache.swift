@@ -2,6 +2,19 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
+/// Which brand image a cached file is, read from the label's last component.
+enum CachedImageKind: String, CaseIterable, Sendable {
+    case picture, logo, other
+
+    init(name: String) {
+        switch name.split(separator: "/").last {
+        case "picture": self = .picture
+        case "logo": self = .logo
+        default: self = .other
+        }
+    }
+}
+
 /// One cached image file, as listed by the debug menu. `name` is the readable
 /// part recovered from the file name (e.g. `ADIDAS/picture`). The metadata
 /// fields are nil when unknown (e.g. bytes that aren't a decodable image).
@@ -15,6 +28,8 @@ struct CachedImageEntry: Identifiable, Equatable, Sendable {
     var pixelHeight: Int? = nil
     /// Upper-case file extension of the image type, e.g. `WEBP`, `PNG`.
     var format: String? = nil
+
+    var kind: CachedImageKind { CachedImageKind(name: name) }
 
     var aspectRatio: String? {
         guard let pixelWidth, let pixelHeight else { return nil }
@@ -59,6 +74,7 @@ protocol BrandImageCaching: Sendable {
     func loadCachedImage(for url: URL) -> Data?
     func store(_ data: Data, for url: URL)
     func removeAll()
+    func removeEntries(kind: CachedImageKind)
     func byteCount() -> Int
     func entries() -> [CachedImageEntry]
 }
@@ -107,6 +123,15 @@ final class FileBrandImageCache: BrandImageCaching, @unchecked Sendable {
         try? FileManager.default.removeItem(at: directory)
         for name in Self.legacyDirectoryNames {
             try? FileManager.default.removeItem(at: root.appendingPathComponent(name))
+        }
+    }
+
+    func removeEntries(kind: CachedImageKind) {
+        lock.lock()
+        defer { lock.unlock() }
+        let files = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+        for file in files where CachedImageKind(name: Self.displayName(fromFileName: file.lastPathComponent)) == kind {
+            try? FileManager.default.removeItem(at: file)
         }
     }
 
@@ -244,6 +269,13 @@ final class BrandImageCache: @unchecked Sendable {
     func removeAll() {
         memory.removeAllObjects()
         disk.removeAll()
+    }
+
+    /// Drops one kind from disk and, since the memory layer is keyed by URL
+    /// and can't be filtered by kind, the whole memory layer.
+    func removeEntries(kind: CachedImageKind) {
+        memory.removeAllObjects()
+        disk.removeEntries(kind: kind)
     }
 
     func diskByteCount() -> Int {

@@ -79,6 +79,9 @@ std::string RenderScalar(const std::shared_ptr<arrow::Scalar> &cell, bool nested
     return Json::writeString(builder, ScalarToJson(cell));
   }
   switch (cell->type->id()) {
+  case arrow::Type::BINARY:
+  case arrow::Type::LARGE_BINARY:
+    return std::to_string(std::static_pointer_cast<arrow::BaseBinaryScalar>(cell)->value->size()) + " bytes";
   case arrow::Type::BOOL:
     return std::static_pointer_cast<arrow::BooleanScalar>(cell)->value ? "true"
                                                                        : "false";

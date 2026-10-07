@@ -1,0 +1,49 @@
+<%inc
+#include "blackkeys/assetsbo/handling/brand/routes/common.hpp"
+%>
+<%c++
+  const auto uploads_enabled = @@.get<bool>("image_uploads_enabled");
+  const auto creating = @@.get<bool>("creating");
+  const auto image_url = drogon::HttpViewData::htmlTranslate(@@.get<std::string>("image_url"));
+  const std::string kind = "image", label = "Image", filename = "embedded.webp", input_id = "image_file";
+%>
+<section data-event-images data-maximum-bytes="20971520" class="mb-6">
+  <article class="card card-border bg-base-100 shadow-sm" data-event-image="{%kind%}" data-image-card data-image-url="{%image_url%}" data-stored-filename="{%filename%}">
+    <figure class="bg-base-200 min-h-48 p-4">
+      <img data-image-preview hidden alt="{%label%} preview" class="max-h-64 max-w-full object-contain">
+      <p data-image-placeholder class="text-sm text-base-content/60">Loading preview…</p>
+    </figure>
+    <div class="card-body gap-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="card-title">{%label%}</h2>
+        <span data-image-status class="badge badge-sm badge-ghost">Loading</span>
+      </div>
+      <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+        <dt class="font-medium">Filename</dt>
+        <dd data-image-filename class="min-w-0 break-all">{%filename%}</dd>
+        <dt class="font-medium">Format</dt>
+        <dd><span data-image-format class="badge badge-outline badge-sm">—</span></dd>
+        <dt class="font-medium">Size</dt>
+        <dd data-image-size>—</dd>
+        <dt class="font-medium">Dimensions</dt>
+        <dd data-image-dimensions>—</dd>
+        <dt class="font-medium">Aspect ratio</dt>
+        <dd data-image-aspect>—</dd>
+        <dt class="font-medium">Last modified</dt>
+        <dd data-image-modified>Unknown</dd>
+      </dl>
+<%c++ if (uploads_enabled) { %>
+      <fieldset class="fieldset">
+        <label class="fieldset-legend" for="{%input_id%}">Replace {%label%}</label>
+        <input id="{%input_id%}" type="file" name="{%input_id%}" accept="image/webp,.webp" class="file-input w-full" disabled>
+        <%c++ if (!creating) { %>
+        <label class="label"><input type="checkbox" class="checkbox" name="remove_image" value="1" data-image-remove> Clear stored image</label>
+<%c++ } %>
+        <p class="label">Optional WebP, up to 20 MiB. Leave empty to keep the stored image.</p>
+        <p data-image-error hidden role="alert" class="text-sm text-error"></p>
+      </fieldset>
+<%c++ } %>
+    </div>
+  </article>
+</section>
+<%view image_preview %>

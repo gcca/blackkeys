@@ -30,7 +30,9 @@
 <body>
   <div class="navbar bg-base-200 shadow-sm mb-6">
     <div class="navbar-start">
-      <a href="/v1/brand/list" class="btn btn-ghost text-lg">Brands</a>
+      <a href="/" class="btn btn-ghost">Home</a>
+      <a href="/v1/brand/list" class="btn btn-ghost">Brands</a>
+      <a href="/v1/event/list" class="btn btn-ghost">Events</a>
     </div>
     <div class="navbar-end">
       <details class="dropdown dropdown-end">

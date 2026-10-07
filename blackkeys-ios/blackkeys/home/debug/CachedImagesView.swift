@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Every image on disk with its size, filtered by a plain search field.
+/// Every image on disk (pictures and logos alike) with its metadata, filtered by kind and a search field.
 struct CachedImagesView: View {
     let imageCache: BrandImageCache
     let revision: Int
@@ -8,11 +8,22 @@ struct CachedImagesView: View {
     @State private var entries: [CachedImageEntry] = []
     @State private var isLoaded = false
     @State private var query = ""
+    @State private var kind: CachedImageKind?
 
     var body: some View {
-        let visible = entries.matching(query)
+        let visible = entries.filter { kind == nil || $0.kind == kind }.matching(query)
 
         List {
+            Section {
+                Picker("Kind", selection: $kind) {
+                    Text("All").tag(CachedImageKind?.none)
+                    Text("Pictures").tag(CachedImageKind?.some(.picture))
+                    Text("Logos").tag(CachedImageKind?.some(.logo))
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("cachedImagesKindPicker")
+            }
+
             Section {
                 ForEach(visible) { entry in
                     row(for: entry)

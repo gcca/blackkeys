@@ -1,0 +1,9 @@
+<%layout layout%>
+<div class="grid gap-4 sm:grid-cols-2 max-w-3xl">
+  <a href="/v1/brand/list" class="card card-border">
+    <div class="card-body"><h2 class="card-title">Brands</h2><p>Manage brands and their images.</p></div>
+  </a>
+  <a href="/v1/event/list" class="card card-border">
+    <div class="card-body"><h2 class="card-title">Events</h2><p>Manage events, schedules, and images.</p></div>
+  </a>
+</div>

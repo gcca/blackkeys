@@ -124,9 +124,9 @@ std::string EncodePathSegment(const std::string &value) {
   return encoded;
 }
 
-std::optional<std::string> ValidateWebpUpload(std::string_view bytes) {
-  if (bytes.size() > kMaxImageBytes) {
-    return "WebP images must be at most 10 MiB";
+std::optional<std::string> ValidateWebpUpload(std::string_view bytes, std::size_t maximum_bytes) {
+  if (bytes.size() > maximum_bytes) {
+    return "WebP images must be at most " + std::to_string(maximum_bytes / (1024 * 1024)) + " MiB";
   }
   // A WebP file is a RIFF container: "RIFF", 4-byte length, then "WEBP".
   if (bytes.size() < 12 || bytes.substr(0, 4) != "RIFF" ||

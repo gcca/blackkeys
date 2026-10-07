@@ -1,0 +1,17 @@
+<%inc
+#include "blackkeys/assetsbo/handling/brand/routes/common.hpp"
+%>
+<%layout layout%>
+<p class="mb-4"><a class="btn" href="/v1/event/create">Create event</a></p>
+<div class="overflow-x-auto">
+<table class="table table-zebra">
+  <thead><tr><th>Title</th><th>Start time</th><th>End time</th></tr></thead>
+  <tbody>
+<%c++ for (const auto &row : @@.get<std::vector<std::vector<std::string>>>("rows")) {
+  const auto href = drogon::HttpViewData::htmlTranslate("/v1/event/" + blackkeys::assetsbo::handling::brand::EncodePathSegment(row[0]) + "/details");
+%>
+    <tr><td><a href="{%href%}" class="link">{%drogon::HttpViewData::htmlTranslate(row[0])%}</a></td><td>{%drogon::HttpViewData::htmlTranslate(row[1])%}</td><td>{%drogon::HttpViewData::htmlTranslate(row[2])%}</td></tr>
+<%c++ } %>
+  </tbody>
+</table>
+</div>

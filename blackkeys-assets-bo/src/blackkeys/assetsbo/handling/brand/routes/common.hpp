@@ -24,7 +24,7 @@ inline constexpr std::size_t kMaxImageBytes = 10U * 1024U * 1024U;
 bool IsImageKind(std::string_view kind);
 std::string BrandImageKey(const std::string &name, std::string_view kind);
 std::string EncodePathSegment(const std::string &value);
-std::optional<std::string> ValidateWebpUpload(std::string_view bytes);
+std::optional<std::string> ValidateWebpUpload(std::string_view bytes, std::size_t maximum_bytes = kMaxImageBytes);
 
 void SendView(const Callback &callback, drogon::HttpStatusCode status,
               const std::string &view, drogon::HttpViewData data);

@@ -1,0 +1,266 @@
+<script>
+  (function () {
+    "use strict";
+
+    var root = document.currentScript.previousElementSibling;
+    var maximumBytes = Number(root.dataset.maximumBytes);
+    var riffTag = [82, 73, 70, 70];
+    var webpTag = [87, 69, 66, 80];
+    var cards = Array.from(root.querySelectorAll("[data-image-card]"));
+
+    function field(card, name) {
+      return card.querySelector("[data-image-" + name + "]");
+    }
+
+    function setStatus(card, text, classes) {
+      var element = field(card, "status");
+      element.textContent = text;
+      element.className = "badge badge-sm " + classes;
+    }
+
+    function setError(card, message) {
+      var element = field(card, "error");
+      if (!element) return;
+      element.textContent = message;
+      element.hidden = !message;
+    }
+
+    function revokePreview(card) {
+      var state = card.imagePreviewState;
+      if (state.currentUrl) {
+        URL.revokeObjectURL(state.currentUrl);
+        state.currentUrl = "";
+      }
+    }
+
+    function hidePreview(card, message) {
+      revokePreview(card);
+      var preview = field(card, "preview");
+      preview.removeAttribute("src");
+      preview.hidden = true;
+      var placeholder = field(card, "placeholder");
+      placeholder.textContent = message;
+      placeholder.hidden = false;
+    }
+
+    function showPreview(card, url) {
+      revokePreview(card);
+      card.imagePreviewState.currentUrl = url;
+      var preview = field(card, "preview");
+      preview.src = url;
+      preview.hidden = false;
+      field(card, "placeholder").hidden = true;
+    }
+
+    function greatestCommonDivisor(a, b) {
+      while (b) {
+        var remainder = a % b;
+        a = b;
+        b = remainder;
+      }
+      return a;
+    }
+
+    function humanSize(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      var units = ["KiB", "MiB", "GiB"];
+      var value = bytes;
+      var unit = "B";
+      for (var i = 0; i < units.length && value >= 1024; ++i) {
+        value /= 1024;
+        unit = units[i];
+      }
+      return value.toLocaleString(undefined, {maximumFractionDigits: 1}) + " " + unit;
+    }
+
+    function localTime(value) {
+      if (!value) return "Unknown";
+      var date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "Unknown" : date.toLocaleString();
+    }
+
+    function renderMetadata(card, metadata) {
+      field(card, "filename").textContent = metadata.filename;
+      field(card, "format").textContent = "WebP · " + (metadata.type || "image/webp");
+      field(card, "size").textContent = humanSize(metadata.size) + " (" +
+          metadata.size.toLocaleString() + " bytes)";
+      field(card, "dimensions").textContent = metadata.width.toLocaleString() + " × " +
+          metadata.height.toLocaleString() + " px";
+      var divisor = greatestCommonDivisor(metadata.width, metadata.height);
+      field(card, "aspect").textContent = (metadata.width / divisor) + ":" +
+          (metadata.height / divisor);
+      field(card, "modified").textContent = metadata.modified;
+    }
+
+    function resetMetadata(card) {
+      field(card, "filename").textContent = card.dataset.storedFilename;
+      field(card, "format").textContent = "—";
+      field(card, "size").textContent = "—";
+      field(card, "dimensions").textContent = "—";
+      field(card, "aspect").textContent = "—";
+      field(card, "modified").textContent = "Unknown";
+    }
+
+    function decodeImage(url) {
+      return new Promise(function (resolve, reject) {
+        var image = new Image();
+        image.onload = function () {
+          resolve({width: image.naturalWidth, height: image.naturalHeight});
+        };
+        image.onerror = reject;
+        image.src = url;
+      });
+    }
+
+    function renderStored(card) {
+      var stored = card.imagePreviewState.stored;
+      setError(card, "");
+      if (stored.availability === "ready") {
+        var url = URL.createObjectURL(stored.blob);
+        showPreview(card, url);
+        renderMetadata(card, stored.metadata);
+        setStatus(card, "Stored", "badge-outline");
+      } else if (stored.availability === "missing") {
+        hidePreview(card, "Not uploaded");
+        resetMetadata(card);
+        setStatus(card, "Not uploaded", "badge-ghost");
+      } else {
+        hidePreview(card, "Unable to load");
+        resetMetadata(card);
+        setStatus(card, "Unable to load", "badge-error badge-soft");
+      }
+    }
+
+    async function loadStored(card) {
+      var state = card.imagePreviewState;
+      try {
+        var response = await fetch(card.dataset.imageUrl, {cache: "no-store"});
+        if (response.status === 404) {
+          state.stored = {availability: "missing"};
+          renderStored(card);
+          return;
+        }
+        if (!response.ok) {
+          state.stored = {availability: "error"};
+          renderStored(card);
+          return;
+        }
+
+        var blob = await response.blob();
+        var url = URL.createObjectURL(blob);
+        try {
+          var dimensions = await decodeImage(url);
+          state.stored = {
+            availability: "ready",
+            blob: blob,
+            metadata: {
+              filename: card.dataset.storedFilename,
+              type: blob.type || "image/webp",
+              size: blob.size,
+              width: dimensions.width,
+              height: dimensions.height,
+              modified: localTime(response.headers.get("Last-Modified"))
+            }
+          };
+          showPreview(card, url);
+          renderMetadata(card, state.stored.metadata);
+          setStatus(card, "Stored", "badge-outline");
+        } catch (error) {
+          URL.revokeObjectURL(url);
+          state.stored = {availability: "error"};
+          renderStored(card);
+        }
+      } catch (error) {
+        state.stored = {availability: "error"};
+        renderStored(card);
+      }
+    }
+
+    async function hasWebpSignature(file) {
+      if (file.size < 12) return false;
+      var bytes = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+      return riffTag.every(function (value, index) { return bytes[index] === value; }) &&
+          webpTag.every(function (value, index) { return bytes[8 + index] === value; });
+    }
+
+    function rejectSelection(card, input, message) {
+      input.value = "";
+      renderStored(card);
+      setError(card, message);
+    }
+
+    function bindUpload(card) {
+      var input = card.querySelector("input[type=file]");
+      if (!input) return;
+      input.disabled = false;
+      var remove = field(card, "remove");
+      if (remove) remove.addEventListener("change", function () {
+        ++card.imagePreviewState.selectionToken;
+        input.value = "";
+        if (remove.checked) {
+          hidePreview(card, "Image will be cleared when saved");
+          resetMetadata(card);
+          setStatus(card, "Unsaved removal", "badge-warning badge-soft");
+          setError(card, "");
+        } else renderStored(card);
+      });
+      input.addEventListener("change", async function () {
+        var state = card.imagePreviewState;
+        var token = ++state.selectionToken;
+        var file = input.files && input.files[0];
+        if (file && remove) remove.checked = false;
+        if (!file) {
+          renderStored(card);
+          return;
+        }
+        if (file.size > maximumBytes) {
+          rejectSelection(card, input, "Choose a WebP image no larger than " + (maximumBytes / (1024 * 1024)) + " MiB.");
+          return;
+        }
+        if (!(await hasWebpSignature(file))) {
+          if (token !== state.selectionToken) return;
+          rejectSelection(card, input, "The selected file does not have a valid WebP signature.");
+          return;
+        }
+
+        var url = URL.createObjectURL(file);
+        try {
+          var dimensions = await decodeImage(url);
+          if (token !== state.selectionToken) {
+            URL.revokeObjectURL(url);
+            return;
+          }
+          showPreview(card, url);
+          renderMetadata(card, {
+            filename: file.name,
+            type: "image/webp",
+            size: file.size,
+            width: dimensions.width,
+            height: dimensions.height,
+            modified: "Not yet stored"
+          });
+          setStatus(card, "Unsaved replacement", "badge-warning badge-soft");
+          setError(card, "");
+        } catch (error) {
+          URL.revokeObjectURL(url);
+          if (token === state.selectionToken) {
+            rejectSelection(card, input, "The selected WebP image could not be decoded.");
+          }
+        }
+      });
+    }
+
+    cards.forEach(function (card) {
+      card.imagePreviewState = {currentUrl: "", selectionToken: 0, stored: {availability: "error"}};
+      if (!card.dataset.imageUrl) {
+        card.imagePreviewState.stored = {availability: "missing"};
+        renderStored(card);
+        bindUpload(card);
+      } else loadStored(card).then(function () { bindUpload(card); });
+    });
+
+    window.addEventListener("pagehide", function () {
+      cards.forEach(revokePreview);
+    }, {once: true});
+  })();
+</script>
