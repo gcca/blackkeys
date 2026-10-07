@@ -92,24 +92,10 @@ struct BrandsView: View {
         }
     }
 
-    /// Decorative banner built from the mall's own 4 brand colors (sampled
-    /// from its official logo) rather than a photo — avoids sourcing a
-    /// photo of unclear license just for a background element.
+    /// Bundled hero videos as a reel, or the mall-color gradient when none are
+    /// bundled. Paused while a brand's detail covers the feed.
     private var heroBanner: some View {
-        RoundedRectangle(cornerRadius: 20)
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0x1b / 255, green: 0x44 / 255, blue: 0x9c / 255),
-                        Color(red: 0x96 / 255, green: 0x3d / 255, blue: 0x97 / 255),
-                        Color(red: 0x00 / 255, green: 0x82 / 255, blue: 0x86 / 255),
-                        Color(red: 0xf5 / 255, green: 0x82 / 255, blue: 0x2b / 255),
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .frame(height: 160)
+        HeroReelView(isPlaying: selectedBrand == nil)
     }
 
     private var sectionIntro: some View {
