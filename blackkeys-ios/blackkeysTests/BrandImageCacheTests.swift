@@ -101,6 +101,38 @@ struct CachedImageListingTests {
         #expect(Set(entries.map(\.id)).count == 3)
     }
 
+    @Test func listsMetadataForADecodableImageAndNilForOtherBytes() throws {
+        let scratch = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        let cache = FileBrandImageCache(cacheDirectory: scratch)
+        let size = CGSize(width: 32, height: 18)
+        let png = UIGraphicsImageRenderer(size: size, format: .init(for: .init(displayScale: 1)))
+            .pngData { $0.fill(CGRect(origin: .zero, size: size)) }
+
+        cache.store(png, for: try imageURL(brand: "A", kind: "picture"))
+        cache.store(Data([0x01]), for: try imageURL(brand: "B", kind: "picture"))
+
+        let entries = cache.entries()
+        let image = try #require(entries.first { $0.name == "A/picture" })
+        #expect(image.pixelWidth == 32)
+        #expect(image.pixelHeight == 18)
+        #expect(image.format == "PNG")
+        #expect(image.aspectRatio == "16:9")
+        #expect(image.modified != nil)
+        let other = try #require(entries.first { $0.name == "B/picture" })
+        #expect(other.pixelWidth == nil)
+        #expect(other.format == nil)
+        #expect(other.aspectRatio == nil)
+        #expect(other.modified != nil)
+    }
+
+    @Test func aspectRatioIsReducedOrDecimal() {
+        #expect(CachedImageEntry.aspectRatio(width: 1920, height: 1080) == "16:9")
+        #expect(CachedImageEntry.aspectRatio(width: 100, height: 100) == "1:1")
+        #expect(CachedImageEntry.aspectRatio(width: 1001, height: 563) == "1.78:1")
+        #expect(CachedImageEntry.aspectRatio(width: 0, height: 10) == nil)
+    }
+
     @Test func aMissingDirectoryHasNoEntries() {
         let scratch = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
 

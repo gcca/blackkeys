@@ -1,12 +1,48 @@
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 
 /// One cached image file, as listed by the debug menu. `name` is the readable
-/// part recovered from the file name (e.g. `ADIDAS/picture`).
+/// part recovered from the file name (e.g. `ADIDAS/picture`). The metadata
+/// fields are nil when unknown (e.g. bytes that aren't a decodable image).
 struct CachedImageEntry: Identifiable, Equatable, Sendable {
     /// The file name on disk; unique because it ends in the URL's hash.
     let id: String
     let name: String
     let byteCount: Int
+    var modified: Date? = nil
+    var pixelWidth: Int? = nil
+    var pixelHeight: Int? = nil
+    /// Upper-case file extension of the image type, e.g. `WEBP`, `PNG`.
+    var format: String? = nil
+
+    var aspectRatio: String? {
+        guard let pixelWidth, let pixelHeight else { return nil }
+        return Self.aspectRatio(width: pixelWidth, height: pixelHeight)
+    }
+
+    /// The reduced ratio (`16:9`) when it is small enough to read at a glance,
+    /// otherwise a decimal one (`1.78:1`). Nil for a non-positive side.
+    static func aspectRatio(width: Int, height: Int) -> String? {
+        guard width > 0, height > 0 else { return nil }
+        var (a, b) = (width, height)
+        while b != 0 { (a, b) = (b, a % b) }
+        let (w, h) = (width / a, height / a)
+        if w <= 32, h <= 32 { return "\(w):\(h)" }
+        return String(format: "%.2f:1", Double(width) / Double(height))
+    }
+
+    /// Reads dimensions and type from the image header only (no decode).
+    static func imageMetadata(at url: URL) -> (width: Int, height: Int, format: String?)? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? Int,
+              let height = properties[kCGImagePropertyPixelHeight] as? Int
+        else { return nil }
+        let format = CGImageSourceGetType(source)
+            .flatMap { UTType($0 as String)?.preferredFilenameExtension?.uppercased() }
+        return (width, height, format)
+    }
 }
 
 extension Collection where Element == CachedImageEntry {
@@ -90,14 +126,20 @@ final class FileBrandImageCache: BrandImageCaching, @unchecked Sendable {
     private func listEntries() -> [CachedImageEntry] {
         let files = (try? FileManager.default.contentsOfDirectory(
             at: directory,
-            includingPropertiesForKeys: [.fileSizeKey]
+            includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey]
         )) ?? []
         return files
             .map { file in
-                CachedImageEntry(
+                let values = try? file.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+                let metadata = CachedImageEntry.imageMetadata(at: file)
+                return CachedImageEntry(
                     id: file.lastPathComponent,
                     name: Self.displayName(fromFileName: file.lastPathComponent),
-                    byteCount: (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                    byteCount: values?.fileSize ?? 0,
+                    modified: values?.contentModificationDate,
+                    pixelWidth: metadata?.width,
+                    pixelHeight: metadata?.height,
+                    format: metadata?.format
                 )
             }
             .sorted {

@@ -7,7 +7,7 @@ enum AppConfiguration {
     /// Usernames that get the debug menu (long-press the Home username chip).
     /// A convenience gate, not security: the username is not a secret and
     /// nothing server-side checks it.
-    static let debugUsernames: Set<String> = ["gcca"]
+    static let debugUsernames: Set<String> = ["gcca", "josh"]
 
     static func isDebugUser(_ username: String, allowList: Set<String> = debugUsernames) -> Bool {
         let normalized = username.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()

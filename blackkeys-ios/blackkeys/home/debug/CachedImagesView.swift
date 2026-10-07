@@ -15,7 +15,7 @@ struct CachedImagesView: View {
         List {
             Section {
                 ForEach(visible) { entry in
-                    LabeledContent(entry.name, value: Self.sizeText(entry.byteCount))
+                    row(for: entry)
                         .accessibilityIdentifier("cachedImageRow-\(entry.id)")
                 }
             } header: {
@@ -45,6 +45,23 @@ struct CachedImagesView: View {
                 imageCache.cachedImageEntries()
             }.value
             isLoaded = true
+        }
+    }
+
+    private func row(for entry: CachedImageEntry) -> some View {
+        let dimensions = entry.pixelWidth.flatMap { width in
+            entry.pixelHeight.map { "\(width)×\($0) px" }
+        }
+        let updated = entry.modified?.formatted(date: .abbreviated, time: .shortened)
+        return VStack(alignment: .leading, spacing: 2) {
+            Text(entry.name)
+            Group {
+                Text("\(Self.sizeText(entry.byteCount)) (\(entry.byteCount.formatted()) bytes)")
+                Text("\(dimensions ?? "—") · ratio \(entry.aspectRatio ?? "—") · \(entry.format ?? "—")")
+                Text("Updated \(updated ?? "—")")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
         }
     }
 

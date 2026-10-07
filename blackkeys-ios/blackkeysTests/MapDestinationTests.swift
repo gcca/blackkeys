@@ -68,6 +68,11 @@ struct DebugUserTests {
         #expect(AppConfiguration.isDebugUser("  GcCa\n", allowList: allowList))
     }
 
+    @Test func shippedAllowListIncludesGccaAndJosh() {
+        #expect(AppConfiguration.isDebugUser("gcca"))
+        #expect(AppConfiguration.isDebugUser("  JOSH "))
+    }
+
     @Test func rejectsOtherAndEmptyUsernames() {
         let allowList: Set<String> = ["gcca"]
 
